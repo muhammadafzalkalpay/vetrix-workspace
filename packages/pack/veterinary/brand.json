@@ -1,0 +1,81 @@
+{
+  "vertical_id": "veterinary",
+  "product_name": "Vetrix",
+  "product_name_status": "working name, trademark and domain check pending",
+  "tagline": "Every call answered. Every pet brought back.",
+  "one_liner": "The AI front desk for veterinary clinics.",
+  "ai_persona": {
+    "default_name": "Riley",
+    "clinic_can_rename": true,
+    "voice": "warm, calm, unhurried",
+    "pace": "slightly slower than Aesthetix; owners are often stressed",
+    "always_uses_pet_name_once_known": true
+  },
+  "colors": {
+    "primary": { "token": "--vx-primary", "hex": "#0E7C7B", "name": "Clinic teal", "use": "buttons, active states, links" },
+    "primary_dark": { "token": "--vx-primary-dark", "hex": "#0B5F5E", "name": "Deep teal", "use": "hover, headers" },
+    "primary_soft": { "token": "--vx-primary-soft", "hex": "#DCF1F0", "name": "Teal tint", "use": "selected rows, chips" },
+    "accent": { "token": "--vx-accent", "hex": "#F4A259", "name": "Warm amber", "use": "due chips, highlights, one accent per screen" },
+    "ink": { "token": "--vx-ink", "hex": "#1F2933", "name": "Ink", "use": "body text" },
+    "ink_muted": { "token": "--vx-ink-muted", "hex": "#52606D", "name": "Slate", "use": "secondary text, labels" },
+    "line": { "token": "--vx-line", "hex": "#E4E7EB", "name": "Line", "use": "borders, dividers" },
+    "surface": { "token": "--vx-surface", "hex": "#FFFFFF", "name": "Surface", "use": "cards" },
+    "background": { "token": "--vx-bg", "hex": "#F6F9F9", "name": "Background", "use": "page background" },
+    "success": { "token": "--vx-success", "hex": "#2E8B57", "name": "Confirmed green", "use": "confirmed, completed" },
+    "warning": { "token": "--vx-warning", "hex": "#D99A00", "name": "Overdue amber", "use": "overdue, unconfirmed" },
+    "danger": { "token": "--vx-danger", "hex": "#C6373C", "name": "Emergency red", "use": "triage banner, emergency, deceased marker uses ink_muted not red" },
+    "info": { "token": "--vx-info", "hex": "#2F6DB5", "name": "Info blue", "use": "informational banners"
+    }
+  },
+  "room_lane_colors": {
+    "exam": "#0E7C7B",
+    "cat_exam": "#5C9E9D",
+    "surgery": "#7B4FA3",
+    "dental": "#A3689F",
+    "radiology": "#2F6DB5",
+    "treatment": "#4F8A6B",
+    "comfort": "#8A7F9E",
+    "isolation": "#B5651D",
+    "kennel": "#6E7B8B"
+  },
+  "dark_mode": {
+    "background": "#0F1A1A",
+    "surface": "#15302F",
+    "ink": "#E8F0F0",
+    "ink_muted": "#9FB3B2",
+    "line": "#244443",
+    "primary": "#3BAAA8",
+    "primary_soft": "#1C3A39",
+    "accent": "#F4A259"
+  },
+  "typography": {
+    "font_family": "Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif",
+    "headings_weight": 600,
+    "body_weight": 400,
+    "base_size_px": 15,
+    "scale": { "h1": 28, "h2": 22, "h3": 18, "body": 15, "small": 13 }
+  },
+  "shape": { "radius_px": 10, "card_shadow": "0 1px 2px rgba(31,41,51,0.06)" },
+  "logo": {
+    "direction": "Wordmark 'Vetrix' in Inter 600 with a simple original glyph: a rounded paw print whose centre pad carries a small heartbeat line. Teal on white, white on teal. No stethoscope, no cross, no cartoon animals.",
+    "deliver": ["svg_wordmark", "svg_glyph", "favicon_32", "app_icon_512"],
+    "clinic_logo_slot": "Clinic uploads its own logo in onboarding step 1. Clinic logo appears on client-facing messages and the booking page. Vetrix branding appears in the staff app only."
+  },
+  "species_icons": {
+    "style": "2px line icons, rounded caps, 24px grid, original artwork",
+    "set": ["dog", "cat", "rabbit", "bird", "reptile", "other"]
+  },
+  "copy_voice": {
+    "tone": "plain, kind, specific",
+    "do": ["use the pet's name", "say what happens next", "one idea per sentence", "short confirmations"],
+    "avoid": ["clinical jargon to owners", "exclamation marks", "upsell language on sick or end-of-life calls", "the word 'furbaby'", "emojis in SMS"],
+    "sample_sms_confirmation": "{{clinic_name}}: {{pet_name}} is booked for {{service_name}} on {{date}} at {{time}} with {{provider}}. Please bring {{what_to_bring}}. Reply C to confirm or R to reschedule."
+  },
+  "landing_page": {
+    "hero": "Every call answered. Every pet brought back.",
+    "sub": "Vetrix answers your phones, books the right appointment in the right room, and brings patients back when they are due. Built for independent veterinary clinics.",
+    "proof_points": ["Answers 100% of calls, 24/7", "Books against rooms, doctors and equipment", "Household reminders: one text for the whole family"],
+    "cta": "Book a 20-minute demo",
+    "screenshots": ["Due list with household merge", "Call log with triage banner", "Calendar with surgery and dental lanes"]
+  }
+}

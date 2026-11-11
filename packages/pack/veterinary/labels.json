@@ -1,0 +1,94 @@
+{
+  "vertical_id": "veterinary",
+  "product_name": "Vetrix",
+  "locale": "en-US",
+  "labels": {
+    "client": { "singular": "Client", "plural": "Clients", "spoken": "pet owner" },
+    "patient": { "singular": "Patient", "plural": "Patients", "spoken": "pet" },
+    "household": { "singular": "Household", "plural": "Households" },
+    "service": { "singular": "Service", "plural": "Services" },
+    "appointment": { "singular": "Appointment", "plural": "Appointments", "spoken": "visit" },
+    "provider": { "singular": "Team member", "plural": "Team" },
+    "provider_role": {
+      "dvm": "Doctor",
+      "technician": "Technician",
+      "assistant": "Veterinary assistant",
+      "csr": "Client service",
+      "manager": "Practice manager"
+    },
+    "provider_role_spoken": {
+      "dvm": "Dr. {{last_name}}",
+      "technician": "{{first_name}}, one of our technicians",
+      "assistant": "{{first_name}}",
+      "csr": "{{first_name}} at the front desk",
+      "manager": "{{first_name}}, our practice manager"
+    },
+    "room": { "singular": "Room", "plural": "Rooms" },
+    "room_type": {
+      "exam": "Exam room",
+      "cat_exam": "Cat exam room",
+      "surgery": "Surgery suite",
+      "dental": "Dental suite",
+      "radiology": "Radiology",
+      "treatment": "Treatment area",
+      "comfort": "Comfort room",
+      "isolation": "Isolation",
+      "kennel": "Kennel"
+    },
+    "equipment": { "singular": "Equipment", "plural": "Equipment" },
+    "package": { "singular": "Wellness plan", "plural": "Wellness plans" },
+    "retention": "Reminders",
+    "retention_rule": "Reminder rule",
+    "due_list": "Due list",
+    "intake": "New client intake",
+    "triage": "Triage",
+    "triage_level": { "routine": "Routine", "urgent": "Urgent", "emergency": "Emergency" },
+    "front_desk": "Front desk",
+    "aftercare": "Discharge instructions",
+    "care_plan": "Care plan",
+    "waitlist": "Waitlist",
+    "deceased": "Deceased",
+    "species": {
+      "dog": "Dog",
+      "cat": "Cat",
+      "rabbit": "Rabbit",
+      "bird": "Bird",
+      "reptile": "Reptile",
+      "other": "Other"
+    },
+    "sex": { "male": "Male", "female": "Female" },
+    "neutered": { "true": "Neutered", "false": "Intact" },
+    "patient_status": {
+      "active": "Active",
+      "deceased": "Deceased",
+      "transferred": "Transferred",
+      "inactive": "Inactive"
+    },
+    "temperament": {
+      "anxious": "Anxious",
+      "aggressive": "Caution",
+      "needs_muzzle": "Muzzle",
+      "cat_carrier_required": "Carrier",
+      "fear_free": "Fear Free"
+    },
+    "drop_off": "Drop-off",
+    "fasting": "Fasting required",
+    "preop_bloodwork": "Pre-op bloodwork",
+    "records_transfer": "Records transfer",
+    "refill_request": "Refill request",
+    "er_partner": "After-hours emergency clinic"
+  },
+  "forbidden_terms": [
+    "guest",
+    "aesthetician",
+    "spa",
+    "med spa",
+    "medspa",
+    "membership",
+    "device",
+    "practitioner",
+    "injector",
+    "treatment room",
+    "skin"
+  ]
+}

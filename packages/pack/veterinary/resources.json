@@ -1,0 +1,111 @@
+{
+  "vertical_id": "veterinary",
+  "room_types": [
+    { "id": "exam", "label_key": "room_type.exam", "bookable": true, "default_count": 3, "notes": "Standard exam room for dogs and cats." },
+    { "id": "cat_exam", "label_key": "room_type.cat_exam", "bookable": true, "default_count": 1, "notes": "Cat-only room. Preferred for patients flagged fear_free or species cat when free." },
+    { "id": "surgery", "label_key": "room_type.surgery", "bookable": true, "default_count": 1, "notes": "One procedure at a time. Blocks on anesthesia_machine." },
+    { "id": "dental", "label_key": "room_type.dental", "bookable": true, "default_count": 1, "notes": "Dental cleanings under anaesthesia. If the clinic has no dental suite, map to surgery." },
+    { "id": "radiology", "label_key": "room_type.radiology", "bookable": true, "default_count": 1, "notes": "Holds the digital x-ray unit." },
+    { "id": "treatment", "label_key": "room_type.treatment", "bookable": true, "default_count": 1, "capacity": 4, "notes": "Open area with multiple tables. Capacity is concurrent technician appointments." },
+    { "id": "comfort", "label_key": "room_type.comfort", "bookable": true, "default_count": 1, "notes": "Quiet room for euthanasia and difficult conversations. If none, map to exam with a 15 minute buffer on both sides." },
+    { "id": "isolation", "label_key": "room_type.isolation", "bookable": true, "default_count": 1, "notes": "Suspected contagious cases (parvo, kennel cough, ringworm). Staff-booked only." },
+    { "id": "kennel", "label_key": "room_type.kennel", "bookable": true, "default_count": 1, "capacity": 8, "notes": "Hospitalisation and drop-off capacity. Capacity is concurrent drop-off patients." }
+  ],
+  "equipment_types": [
+    { "id": "anesthesia_machine", "name": "Anesthesia machine", "default_count": 2, "exclusive": true, "notes": "Caps concurrent surgery plus dental procedures." },
+    { "id": "xray_digital", "name": "Digital x-ray", "default_count": 1, "exclusive": true },
+    { "id": "dental_xray", "name": "Dental x-ray", "default_count": 1, "exclusive": true },
+    { "id": "dental_station", "name": "Dental station", "default_count": 1, "exclusive": true },
+    { "id": "ultrasound", "name": "Ultrasound", "default_count": 1, "exclusive": true },
+    { "id": "lab_analyzer", "name": "In-house lab analyzer", "default_count": 1, "exclusive": false },
+    { "id": "microchip_scanner", "name": "Microchip scanner", "default_count": 2, "exclusive": false }
+  ],
+  "provider_roles": [
+    {
+      "id": "dvm",
+      "label_key": "provider_role.dvm",
+      "bookable_default": true,
+      "can_perform": ["exam", "surgery", "diagnostics", "euthanasia", "telehealth"],
+      "counts_as_doctor_on_premises": true
+    },
+    {
+      "id": "technician",
+      "label_key": "provider_role.technician",
+      "bookable_default": true,
+      "can_perform": ["tech_appointment", "diagnostics_assist", "surgery_assist"],
+      "counts_as_doctor_on_premises": false,
+      "requires_doctor_on_premises_for": ["vaccine_booster_tech", "injection_admin", "blood_draw", "radiographs"]
+    },
+    {
+      "id": "assistant",
+      "label_key": "provider_role.assistant",
+      "bookable_default": true,
+      "can_perform": ["weight_check", "nail_trim"],
+      "counts_as_doctor_on_premises": false
+    },
+    {
+      "id": "csr",
+      "label_key": "provider_role.csr",
+      "bookable_default": false,
+      "can_perform": [],
+      "counts_as_doctor_on_premises": false
+    },
+    {
+      "id": "manager",
+      "label_key": "provider_role.manager",
+      "bookable_default": false,
+      "can_perform": [],
+      "counts_as_doctor_on_premises": false
+    }
+  ],
+  "skills": [
+    { "id": "surgery", "name": "Surgery", "roles": ["dvm"] },
+    { "id": "dentistry", "name": "Dentistry", "roles": ["dvm"] },
+    { "id": "ultrasound", "name": "Ultrasound", "roles": ["dvm"] },
+    { "id": "usda_accredited", "name": "USDA accredited", "roles": ["dvm"], "notes": "Required for health certificates." },
+    { "id": "exotics", "name": "Exotics", "roles": ["dvm", "technician"], "notes": "Required for rabbit, bird, reptile, other." },
+    { "id": "fear_free", "name": "Fear Free certified", "roles": ["dvm", "technician", "assistant"] },
+    { "id": "euthanasia", "name": "End-of-life care", "roles": ["dvm"], "notes": "Default true for all DVMs. Clinic can restrict." }
+  ],
+  "defaults_two_doctor_clinic": {
+    "rooms": [
+      { "type": "exam", "name": "Exam 1" },
+      { "type": "exam", "name": "Exam 2" },
+      { "type": "exam", "name": "Exam 3" },
+      { "type": "cat_exam", "name": "Cat room" },
+      { "type": "surgery", "name": "Surgery" },
+      { "type": "dental", "name": "Dental" },
+      { "type": "radiology", "name": "X-ray" },
+      { "type": "treatment", "name": "Treatment", "capacity": 4 },
+      { "type": "comfort", "name": "Comfort room" },
+      { "type": "isolation", "name": "Isolation" },
+      { "type": "kennel", "name": "Kennels", "capacity": 8 }
+    ],
+    "equipment": [
+      { "type": "anesthesia_machine", "count": 2 },
+      { "type": "xray_digital", "count": 1 },
+      { "type": "dental_xray", "count": 1 },
+      { "type": "dental_station", "count": 1 },
+      { "type": "ultrasound", "count": 1 },
+      { "type": "lab_analyzer", "count": 1 },
+      { "type": "microchip_scanner", "count": 2 }
+    ],
+    "team": [
+      { "role": "dvm", "count": 2 },
+      { "role": "technician", "count": 2 },
+      { "role": "assistant", "count": 1 },
+      { "role": "csr", "count": 2 }
+    ]
+  },
+  "scheduling_rules": {
+    "slot_granularity_min": 15,
+    "default_buffer_min": 5,
+    "temperament_buffer_min": 15,
+    "surgery_drop_off_window": "07:00-08:30",
+    "surgery_pickup_window": "16:00-18:00",
+    "preop_bloodwork_valid_days": 30,
+    "tech_appointment_requires_doctor_on_premises": true,
+    "max_same_household_back_to_back": 3,
+    "species_without_exotics_skill_blocked": ["rabbit", "bird", "reptile", "other"]
+  }
+}

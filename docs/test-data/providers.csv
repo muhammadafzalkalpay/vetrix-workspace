@@ -1,0 +1,6 @@
+id,display_name,role,skills,schedule,bookable,max_concurrent
+prov_001,Dr. Elena Marsh,dvm,surgery;dentistry;ultrasound;usda_accredited;euthanasia,Mon-Fri 08:00-18:00,true,1
+prov_002,Dr. Samuel Okafor,dvm,surgery;euthanasia;fear_free,Tue-Sat 08:00-18:00,true,1
+prov_003,Priya Nair,technician,fear_free,Mon-Fri 07:00-16:00,true,2
+prov_004,Marcus Bell,technician,,Mon-Sat 09:00-18:00,true,2
+prov_005,Dana Whitfield,csr,,Mon-Fri 07:30-18:00,false,0

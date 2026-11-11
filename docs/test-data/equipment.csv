@@ -1,0 +1,10 @@
+id,type,name,exclusive
+eq_001,anesthesia_machine,Anesthesia 1,true
+eq_002,anesthesia_machine,Anesthesia 2,true
+eq_003,xray_digital,Digital x-ray,true
+eq_004,dental_xray,Dental x-ray,true
+eq_005,dental_station,Dental station,true
+eq_006,ultrasound,Ultrasound,true
+eq_007,lab_analyzer,Lab analyzer,false
+eq_008,microchip_scanner,Scanner 1,false
+eq_009,microchip_scanner,Scanner 2,false

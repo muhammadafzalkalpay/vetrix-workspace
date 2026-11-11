@@ -1,0 +1,119 @@
+{
+  "vertical_id": "veterinary",
+  "call_open": {
+    "steps": [
+      { "id": "recording_disclosure", "script_key": "recording_disclosure", "always": true },
+      { "id": "greeting", "script_key": "greeting", "always": true },
+      { "id": "triage_listen", "always": true, "notes": "Triage runs on every utterance for the whole call. See triage.json." }
+    ]
+  },
+  "identify_caller": {
+    "strategy": "caller_id_then_name",
+    "steps": [
+      { "id": "match_caller_id", "action": "lookup_client_by_mobile", "on_match": "confirm_identity", "on_no_match": "ask_existing_or_new" },
+      { "id": "confirm_identity", "prompt": "Is this {{client_first_name}}? And which of your pets is this about?", "verify_with": "patient_name", "on_fail": "ask_existing_or_new", "never": "read_out_pet_list_before_verification" },
+      { "id": "ask_existing_or_new", "prompt": "Have you been to us before, or is this your first visit?", "on_existing": "lookup_by_name_and_pet", "on_new": "new_client" },
+      { "id": "lookup_by_name_and_pet", "prompt": "What's your last name, and your pet's name?", "action": "lookup_client_by_name_and_patient", "on_match": "confirm_mobile", "on_no_match": "new_client" },
+      { "id": "confirm_mobile", "prompt": "And the best mobile number for you?", "action": "update_mobile_if_changed" }
+    ]
+  },
+  "new_client": {
+    "fields": [
+      { "id": "client_first_name", "prompt": "Can I get your first name?", "type": "text", "required": true },
+      { "id": "client_last_name", "prompt": "And your last name?", "type": "text", "required": true },
+      { "id": "mobile", "prompt": "What's the best mobile number for you?", "type": "phone_us", "required": true, "read_back": true },
+      { "id": "email", "prompt": "And an email for the confirmation?", "type": "email", "required": false, "fallback": "That's fine, I'll text you instead." },
+      { "id": "sms_consent", "prompt": "Is it okay if we text you appointment confirmations and reminders? You can reply STOP anytime.", "type": "boolean", "required": true, "store": ["value", "timestamp", "source=phone_ai"] },
+      { "id": "referring_clinic", "prompt": "Has {{patient_name}} been seen at another clinic? We can request the records so the doctor has the history.", "type": "text", "required": false, "creates_task": "records_transfer", "ask_after": "new_patient" }
+    ]
+  },
+  "new_patient": {
+    "fields": [
+      { "id": "patient_name", "prompt": "What's your pet's name?", "type": "text", "required": true },
+      { "id": "species", "prompt": "Is {{patient_name}} a dog or a cat, or something else?", "type": "enum", "values": ["dog", "cat", "rabbit", "bird", "reptile", "other"], "required": true, "on_exotic": "check_exotics_skill" },
+      { "id": "breed", "prompt": "What breed?", "type": "text", "required": false, "accept": ["mixed", "not sure"], "never_block": true },
+      { "id": "age", "prompt": "How old is {{patient_name}}, roughly?", "type": "age_band_or_months", "required": true, "accept_bands": ["puppy_kitten_under_6m", "young_6m_2y", "adult_2y_7y", "senior_7y_plus", "not sure"], "never_block": true },
+      { "id": "sex", "prompt": "Boy or girl?", "type": "enum", "values": ["male", "female"], "required": true },
+      { "id": "neutered", "prompt": "Spayed or neutered?", "type": "boolean", "required": true, "accept": ["fixed", "not sure"] },
+      { "id": "weight_kg", "prompt": "Any idea of the weight?", "type": "number", "required": false, "accept_units": ["lb", "kg"], "store_as": "kg" },
+      { "id": "temperament", "prompt": "Anything we should know, like being nervous at the vet or not great with strangers?", "type": "multi_enum", "values": ["anxious", "aggressive", "needs_muzzle", "cat_carrier_required"], "required": false, "auto_set": { "cat": ["cat_carrier_required"] } }
+    ]
+  },
+  "reason_for_visit": {
+    "prompt": "What's going on with {{patient_name}}?",
+    "mapping_order": ["triage_emergency", "triage_urgent", "keyword_to_service", "default_by_type"],
+    "default_by_type": {
+      "problem_words": ["sick", "not right", "something wrong", "worried", "hurt", "pain"],
+      "problem_default": "sick_visit",
+      "routine_default": "wellness_exam",
+      "new_patient_routine_default": "wellness_exam_new"
+    },
+    "keyword_to_service": [
+      { "service_id": "wellness_exam", "keywords": ["checkup", "check-up", "check up", "annual", "yearly", "wellness", "shots", "vaccines", "vaccination", "booster", "physical"] },
+      { "service_id": "puppy_kitten_visit", "keywords": ["puppy", "kitten", "new puppy", "new kitten", "first shots", "first visit", "just adopted", "8 weeks", "10 weeks", "12 weeks"], "requires": { "age_band": "puppy_kitten_under_6m" } },
+      { "service_id": "senior_wellness", "keywords": ["senior", "older", "getting old", "old dog", "old cat", "slowing down"], "requires": { "min_age_years": { "dog": 7, "cat": 10 } } },
+      { "service_id": "sick_visit", "keywords": ["sick", "vomiting", "throwing up", "diarrhea", "not eating", "lethargic", "limping", "itching", "scratching", "ear", "eye", "lump", "bump", "cough", "sneezing", "drinking a lot", "peeing a lot", "accidents", "rash", "hot spot", "wound", "abscess", "bad breath", "swollen"] },
+      { "service_id": "recheck_exam", "keywords": ["recheck", "re-check", "follow up", "follow-up", "doctor wanted to see", "progress check"] },
+      { "service_id": "vaccine_booster_tech", "keywords": ["just the booster", "rabies shot", "bordetella", "kennel cough shot", "lepto", "distemper", "just vaccines", "shots only"] },
+      { "service_id": "nail_trim", "keywords": ["nails", "nail trim", "claws", "clip nails"] },
+      { "service_id": "anal_gland_expression", "keywords": ["scooting", "anal glands", "glands", "butt dragging"] },
+      { "service_id": "ear_cleaning", "keywords": ["ear cleaning", "clean ears"], "override_to": { "service_id": "sick_visit", "if_keywords": ["shaking head", "smell", "smelly", "discharge", "scratching ears", "red"] } },
+      { "service_id": "spay_canine", "keywords": ["spay", "spayed", "get her fixed", "fixed"], "requires": { "species": "dog", "sex": "female" } },
+      { "service_id": "spay_feline", "keywords": ["spay", "spayed", "get her fixed", "fixed"], "requires": { "species": "cat", "sex": "female" } },
+      { "service_id": "neuter_canine", "keywords": ["neuter", "neutered", "get him fixed", "fixed"], "requires": { "species": "dog", "sex": "male" } },
+      { "service_id": "neuter_feline", "keywords": ["neuter", "neutered", "get him fixed", "fixed"], "requires": { "species": "cat", "sex": "male" } },
+      { "service_id": "dental_cleaning", "keywords": ["dental", "teeth cleaning", "tooth cleaning", "dental cleaning", "tartar"] },
+      { "service_id": "euthanasia", "keywords": ["put down", "put to sleep", "euthanasia", "euthanize", "end of life", "say goodbye", "time to let go", "quality of life"], "ai_handling": "book_with_care" },
+      { "service_id": "health_certificate", "keywords": ["health certificate", "travel", "flying", "moving abroad", "moving overseas", "airline", "international"] },
+      { "service_id": "microchip", "keywords": ["microchip", "chip", "chipped"] },
+      { "service_id": "heartworm_test", "keywords": ["heartworm test", "heartworm"], "requires": { "species": "dog" } },
+      { "service_id": "blood_draw", "keywords": ["bloodwork", "blood work", "blood test", "lab work", "labs"], "requires": { "doctor_ordered_confirmed_by_caller": true }, "fallback": "staff_task" },
+      { "service_id": "suture_removal", "keywords": ["stitches out", "sutures", "staples out", "staples"] },
+      { "service_id": "injection_admin", "keywords": ["cytopoint", "librela", "solensia", "allergy shot", "arthritis shot", "injection", "monthly shot"] },
+      { "service_id": "behavior_consult", "keywords": ["behavior", "behaviour", "aggression", "anxiety", "biting", "barking", "separation"] },
+      { "service_id": "nutrition_consult", "keywords": ["diet", "weight loss", "overweight", "food", "nutrition"] },
+      { "service_id": "weight_check", "keywords": ["weight check", "weigh"] },
+      { "service_id": "mass_removal", "keywords": ["remove a lump", "lump removed", "mass removal", "tumor removed"], "ai_action": "book_exam_first" },
+      { "service_id": "radiographs", "keywords": ["x-ray", "xray", "x ray", "radiograph"], "ai_action": "staff_task" },
+      { "service_id": "ultrasound", "keywords": ["ultrasound", "sonogram"], "ai_action": "staff_task" },
+      { "service_id": "telehealth_consult", "keywords": ["video call", "telehealth", "virtual visit", "over the phone with the doctor"], "enabled_by_setting": "telehealth_enabled" },
+      { "service_id": "drop_off_visit", "keywords": ["drop off", "drop-off", "leave him with you", "leave her with you"] },
+      { "service_id": "rx_refill_request", "keywords": ["refill", "prescription", "medication", "meds", "flea", "tick", "heartworm pills", "nexgard", "simparica", "heartgard", "bravecto", "revolution", "apoquel", "gabapentin", "trazodone", "insulin"], "ai_action": "refill_task", "controlled_substance_keywords": ["gabapentin", "tramadol", "phenobarbital", "diazepam", "alprazolam", "butorphanol", "ketamine"] }
+    ],
+    "unclear_fallback": {
+      "prompt": "Got it. Is this something that's bothering {{patient_name}} right now, or more of a routine visit?",
+      "problem": "sick_visit",
+      "routine": "wellness_exam"
+    }
+  },
+  "slot_offer": {
+    "count": 2,
+    "preference_prompt": "Would mornings or afternoons work better? And is there a doctor you'd prefer?",
+    "read_back": "So that's {{patient_name}} for {{service_phrase}} on {{date_spoken}} at {{time_spoken}} with {{provider_spoken}}. Please bring {{what_to_bring_spoken}}.",
+    "surgery_extra": "fasting_script",
+    "exotic_check": "If the species needs the exotics skill and no provider has it, say: We don't see {{species}} here. I can give you the number of a clinic that does."
+  },
+  "what_to_bring_phrases": {
+    "previous_records": "any previous records",
+    "stool_sample": "a fresh stool sample if you can",
+    "carrier_or_leash": "a carrier for cats or a leash for dogs",
+    "carrier": "a carrier",
+    "leash": "a leash",
+    "any_medications": "any medications {{patient_name}} is on",
+    "breeder_or_shelter_records": "the paperwork from the breeder or shelter",
+    "current_food_label": "the label from the current food",
+    "video_of_behavior_if_possible": "a video of the behavior if you have one",
+    "rabies_certificate": "the rabies certificate",
+    "microchip_number": "the microchip number",
+    "airline_requirements": "anything the airline sent you",
+    "food_if_special_diet": "their food if they're on a special diet"
+  },
+  "call_close": {
+    "steps": [
+      { "id": "confirmation_sms", "action": "send_confirmation_sms", "if": "sms_consent" },
+      { "id": "records_task", "action": "create_task", "task": "records_transfer", "if": "referring_clinic" },
+      { "id": "anything_else", "prompt": "Is there anything else I can help with for {{patient_name}} or any of your other pets?" },
+      { "id": "goodbye", "prompt": "Thanks for calling {{clinic_name}}. We'll see {{patient_name}} on {{date_spoken}}." }
+    ]
+  }
+}

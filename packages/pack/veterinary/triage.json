@@ -1,0 +1,420 @@
+{
+  "vertical_id": "veterinary",
+  "evaluate_on": "every_caller_utterance",
+  "classification": {
+    "method": "llm_intent",
+    "phrases_are": "examples_not_exhaustive",
+    "exclude_known_pet_names": true,
+    "when_unsure": "escalate",
+    "never_lower_level_within_call": true
+  },
+  "never_downgrade": true,
+  "levels": {
+    "emergency": {
+      "action_in_hours": "transfer_now",
+      "action_after_hours": "er_referral",
+      "after_hours_also_book_next_available": "setting:after_hours_book_next_available",
+      "log_as": "emergency",
+      "transfer_summary_template": "Emergency: {{trigger_name}}. {{patient_name}}, {{species}}, {{age_band}}. Caller {{client_first_name}} {{mobile}}."
+    },
+    "urgent": {
+      "action": "book_same_or_next_day",
+      "service_id": "sick_visit",
+      "fallback_if_no_slot": "drop_off_visit",
+      "fallback_if_no_drop_off": "er_referral_or_waitlist_priority",
+      "set_triage_level": "urgent",
+      "log_as": "urgent"
+    },
+    "routine": {
+      "action": "continue_booking",
+      "set_triage_level": "routine"
+    }
+  },
+  "emergency_triggers": [
+    {
+      "id": "breathing_difficulty",
+      "name": "Breathing difficulty",
+      "phrases": [
+        "can't breathe",
+        "trouble breathing",
+        "struggling to breathe",
+        "gasping",
+        "open mouth breathing",
+        "breathing fast",
+        "blue gums",
+        "blue tongue",
+        "choking",
+        "something stuck in throat"
+      ]
+    },
+    {
+      "id": "collapse_unresponsive",
+      "name": "Collapse or unresponsive",
+      "phrases": [
+        "collapsed",
+        "collapsing",
+        "won't wake up",
+        "unconscious",
+        "unresponsive",
+        "can't stand up",
+        "went limp",
+        "pale gums",
+        "white gums"
+      ]
+    },
+    {
+      "id": "seizure",
+      "name": "Seizure",
+      "phrases": [
+        "seizure",
+        "seizing",
+        "convulsing",
+        "convulsions",
+        "shaking uncontrollably",
+        "fitting",
+        "twitching and not responding"
+      ]
+    },
+    {
+      "id": "toxin_ingestion",
+      "name": "Possible poisoning",
+      "phrases": [
+        "ate chocolate",
+        "chocolate",
+        "xylitol",
+        "sugar-free gum",
+        "sugar free gum",
+        "antifreeze",
+        "rat poison",
+        "rat bait",
+        "mouse poison",
+        "lilies",
+        "lily",
+        "grapes",
+        "raisins",
+        "ibuprofen",
+        "advil",
+        "tylenol",
+        "acetaminophen",
+        "aleve",
+        "marijuana",
+        "edibles",
+        "weed",
+        "mushrooms",
+        "snail bait",
+        "slug bait",
+        "poison",
+        "poisoned",
+        "toxic",
+        "ate something he shouldn't",
+        "ate something she shouldn't"
+      ]
+    },
+    {
+      "id": "trauma",
+      "name": "Trauma",
+      "phrases": [
+        "hit by a car",
+        "hit by car",
+        "run over",
+        "fell from",
+        "fell off",
+        "attacked",
+        "dog fight",
+        "dog attack",
+        "bite wound",
+        "bitten",
+        "mauled",
+        "broken leg",
+        "bone sticking out"
+      ]
+    },
+    {
+      "id": "uncontrolled_bleeding",
+      "name": "Uncontrolled bleeding",
+      "phrases": [
+        "bleeding a lot",
+        "won't stop bleeding",
+        "blood everywhere",
+        "bleeding heavily",
+        "gushing blood"
+      ]
+    },
+    {
+      "id": "bloat_gdv",
+      "name": "Possible bloat",
+      "phrases": [
+        "bloated",
+        "swollen belly",
+        "stomach is huge",
+        "trying to vomit but nothing",
+        "retching",
+        "dry heaving",
+        "unproductive vomiting",
+        "belly is hard"
+      ],
+      "species_weight": [
+        "dog"
+      ]
+    },
+    {
+      "id": "urinary_blockage",
+      "name": "Possible urinary blockage",
+      "phrases": [
+        "can't pee",
+        "cannot pee",
+        "can't urinate",
+        "straining to pee",
+        "straining to urinate",
+        "crying in the litter box",
+        "no urine",
+        "nothing coming out",
+        "going to the litter box over and over"
+      ]
+    },
+    {
+      "id": "heat_stroke",
+      "name": "Heat stroke",
+      "phrases": [
+        "heat stroke",
+        "heatstroke",
+        "overheated",
+        "left in the car",
+        "hot car",
+        "panting heavily and collapsed",
+        "too hot"
+      ]
+    },
+    {
+      "id": "dystocia",
+      "name": "Birthing difficulty",
+      "phrases": [
+        "in labor",
+        "in labour",
+        "giving birth",
+        "stuck puppy",
+        "stuck kitten",
+        "straining for hours",
+        "contractions but no puppies",
+        "contractions but no kittens"
+      ]
+    },
+    {
+      "id": "eye_emergency",
+      "name": "Eye emergency",
+      "phrases": [
+        "eye popped out",
+        "eye is bulging",
+        "eye out of socket",
+        "suddenly blind",
+        "went blind",
+        "eye injury",
+        "something in the eye",
+        "eye is bleeding"
+      ]
+    },
+    {
+      "id": "paralysis_severe_pain",
+      "name": "Paralysis or severe pain",
+      "phrases": [
+        "dragging back legs",
+        "can't move his legs",
+        "can't move her legs",
+        "paralyzed",
+        "paralysed",
+        "screaming in pain",
+        "crying out in pain",
+        "won't let me touch",
+        "back legs stopped working"
+      ]
+    },
+    {
+      "id": "allergic_reaction",
+      "name": "Allergic reaction",
+      "phrases": [
+        "face is swollen",
+        "swollen face",
+        "swollen muzzle",
+        "hives",
+        "bumps all over",
+        "swelling after the vaccine",
+        "swelling after a bee sting",
+        "bee sting",
+        "wasp sting"
+      ]
+    }
+  ],
+  "urgent_triggers": [
+    {
+      "id": "repeated_vomiting",
+      "name": "Repeated vomiting",
+      "phrases": [
+        "vomiting all day",
+        "keeps throwing up",
+        "vomited several times",
+        "vomiting since yesterday",
+        "vomiting blood"
+      ]
+    },
+    {
+      "id": "bloody_diarrhea",
+      "name": "Diarrhea with blood",
+      "phrases": [
+        "bloody diarrhea",
+        "blood in stool",
+        "blood in poop",
+        "black stool",
+        "diarrhea for days"
+      ]
+    },
+    {
+      "id": "not_eating",
+      "name": "Not eating",
+      "phrases": [
+        "hasn't eaten in two days",
+        "not eating for days",
+        "won't eat anything",
+        "stopped eating",
+        "not eating or drinking"
+      ]
+    },
+    {
+      "id": "lethargy",
+      "name": "Lethargy",
+      "phrases": [
+        "very lethargic",
+        "won't get up",
+        "just lying there",
+        "no energy",
+        "not himself",
+        "not herself"
+      ]
+    },
+    {
+      "id": "lameness",
+      "name": "Lameness",
+      "phrases": [
+        "limping badly",
+        "won't put weight on",
+        "holding the leg up",
+        "can't walk properly",
+        "limping since yesterday"
+      ]
+    },
+    {
+      "id": "eye_problem",
+      "name": "Eye problem",
+      "phrases": [
+        "squinting",
+        "eye is red",
+        "eye discharge",
+        "holding the eye closed",
+        "cloudy eye",
+        "eye swollen"
+      ]
+    },
+    {
+      "id": "ear_infection",
+      "name": "Ear problem",
+      "phrases": [
+        "shaking his head",
+        "shaking her head",
+        "ears smell",
+        "ear discharge",
+        "scratching ears raw",
+        "ear is red"
+      ]
+    },
+    {
+      "id": "urinary_issue_dog",
+      "name": "Urinary issue",
+      "phrases": [
+        "peeing blood",
+        "blood in urine",
+        "accidents in the house",
+        "peeing a lot",
+        "straining a little"
+      ],
+      "species_weight": [
+        "dog"
+      ]
+    },
+    {
+      "id": "wound_abscess",
+      "name": "Wound or abscess",
+      "phrases": [
+        "cut",
+        "wound",
+        "abscess",
+        "swelling with pus",
+        "open sore",
+        "hot spot bleeding"
+      ]
+    },
+    {
+      "id": "coughing",
+      "name": "Coughing",
+      "phrases": [
+        "coughing a lot",
+        "honking cough",
+        "coughing for days",
+        "gagging",
+        "kennel cough"
+      ]
+    },
+    {
+      "id": "excessive_thirst",
+      "name": "Excessive thirst",
+      "phrases": [
+        "drinking a lot",
+        "drinking so much water",
+        "always thirsty"
+      ]
+    },
+    {
+      "id": "severe_itching",
+      "name": "Severe itching",
+      "phrases": [
+        "scratching nonstop",
+        "itching like crazy",
+        "chewing himself raw",
+        "chewing herself raw",
+        "losing fur"
+      ]
+    },
+    {
+      "id": "pregnancy_concern",
+      "name": "Pregnancy concern",
+      "phrases": [
+        "pregnant and",
+        "might be pregnant",
+        "due to give birth"
+      ]
+    }
+  ],
+  "after_hours_er": {
+    "setting_keys": [
+      "er_name",
+      "er_phone",
+      "er_address"
+    ],
+    "sms_template": "{{clinic_name}}: For emergencies while we're closed please go to {{er_name}}, {{er_address}}. Phone {{er_phone}}."
+  },
+  "scripts": {
+    "emergency_in_hours": "That sounds like it needs a doctor right away. I am connecting you to the team now.",
+    "emergency_after_hours": "That sounds like it needs a doctor right away. We are closed at the moment, so please go to {{er_name}} at {{er_address}}. Their number is {{er_phone}}. I will text that to you now.",
+    "emergency_transfer_failed": "I couldn't reach the team. Please go straight to {{er_name}} at {{er_address}}, {{er_phone}}. I'm texting that to you and alerting our staff now.",
+    "urgent_booked": "Let's get {{patient_name}} seen today. I have {{slot_1}} or {{slot_2}}. If anything gets worse before then, please go to {{er_name}} or call us straight back.",
+    "urgent_no_slot": "We're fully booked today, but I can set {{patient_name}} up as a drop-off this morning so the doctor can see them between appointments. Would that work?",
+    "caller_downplays": "I understand. Even so, with what you've described I'd rather have the team take a look right away. Let me connect you.",
+    "advice_requested": "I am not able to give medical advice, but I can get {{patient_name}} seen. The next available is {{slot_1}} or {{slot_2}}."
+  },
+  "staff_alert": {
+    "on_emergency_after_hours": true,
+    "on_transfer_failed": true,
+    "channels": [
+      "dashboard_banner",
+      "sms_to_on_call_if_configured"
+    ]
+  }
+}

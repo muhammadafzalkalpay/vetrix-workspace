@@ -1,0 +1,525 @@
+{
+  "vertical_id": "veterinary",
+  "engine": {
+    "run_daily_at_local": "06:00",
+    "household_merge_window_days": 14,
+    "quiet_hours_local": {
+      "start": "20:00",
+      "end": "08:00"
+    },
+    "max_touches_per_rule": 3,
+    "stop_sequence_on": [
+      "appointment_booked_for_rule",
+      "patient_status_changed",
+      "client_opt_out",
+      "euthanasia_appointment_booked"
+    ],
+    "suppress_if_any": [
+      "patient.status != active",
+      "client.flags contains do_not_contact",
+      "patient has appointment with status in (confirmed, requested) for the rule's service within 45 days",
+      "patient has appointment for service euthanasia with status in (requested, confirmed)"
+    ],
+    "channel_rules": {
+      "sms": "requires client.sms_consent",
+      "email": "requires client.email",
+      "ai_call": "requires not client.flags do_not_call; in hours only"
+    },
+    "booking_link": "{{short_link_to_web_booking_prefilled_with_patient_and_service}}"
+  },
+  "vaccines": [
+    {
+      "id": "rabies_dog",
+      "name": "Rabies",
+      "species": [
+        "dog"
+      ],
+      "interval_months_options": [
+        12,
+        36
+      ],
+      "default_interval_months": 36,
+      "first_dose_interval_months": 12,
+      "core": true
+    },
+    {
+      "id": "dapp",
+      "name": "DAPP (distemper, adenovirus, parvovirus, parainfluenza)",
+      "species": [
+        "dog"
+      ],
+      "interval_months_options": [
+        12,
+        36
+      ],
+      "default_interval_months": 36,
+      "first_dose_interval_months": 12,
+      "core": true
+    },
+    {
+      "id": "bordetella",
+      "name": "Bordetella",
+      "species": [
+        "dog"
+      ],
+      "interval_months_options": [
+        6,
+        12
+      ],
+      "default_interval_months": 12,
+      "core": false
+    },
+    {
+      "id": "leptospirosis",
+      "name": "Leptospirosis",
+      "species": [
+        "dog"
+      ],
+      "interval_months_options": [
+        12
+      ],
+      "default_interval_months": 12,
+      "core": false
+    },
+    {
+      "id": "lyme",
+      "name": "Lyme",
+      "species": [
+        "dog"
+      ],
+      "interval_months_options": [
+        12
+      ],
+      "default_interval_months": 12,
+      "core": false
+    },
+    {
+      "id": "canine_influenza",
+      "name": "Canine influenza",
+      "species": [
+        "dog"
+      ],
+      "interval_months_options": [
+        12
+      ],
+      "default_interval_months": 12,
+      "core": false
+    },
+    {
+      "id": "rabies_cat",
+      "name": "Rabies",
+      "species": [
+        "cat"
+      ],
+      "interval_months_options": [
+        12,
+        36
+      ],
+      "default_interval_months": 12,
+      "first_dose_interval_months": 12,
+      "core": true
+    },
+    {
+      "id": "fvrcp",
+      "name": "FVRCP",
+      "species": [
+        "cat"
+      ],
+      "interval_months_options": [
+        12,
+        36
+      ],
+      "default_interval_months": 36,
+      "first_dose_interval_months": 12,
+      "core": true
+    },
+    {
+      "id": "felv",
+      "name": "FeLV",
+      "species": [
+        "cat"
+      ],
+      "interval_months_options": [
+        12
+      ],
+      "default_interval_months": 12,
+      "core": false
+    }
+  ],
+  "rules": [
+    {
+      "id": "annual_wellness",
+      "name": "Annual wellness exam",
+      "species": [
+        "dog",
+        "cat"
+      ],
+      "trigger": "due_at = patient.last_wellness_exam_at + 12 months",
+      "exclude_if": "patient qualifies for senior_recheck",
+      "books_service": "wellness_exam",
+      "touches": [
+        {
+          "offset_days": -30,
+          "channels": [
+            "email",
+            "sms"
+          ],
+          "template": "wellness_due_30"
+        },
+        {
+          "offset_days": -7,
+          "channels": [
+            "sms"
+          ],
+          "template": "wellness_due_7"
+        },
+        {
+          "offset_days": 14,
+          "channels": [
+            "ai_call"
+          ],
+          "template": "wellness_overdue_call"
+        }
+      ]
+    },
+    {
+      "id": "vaccine_due",
+      "name": "Vaccine due",
+      "species": [
+        "dog",
+        "cat"
+      ],
+      "trigger": "for each vaccine_record: due_at",
+      "group_same_patient_vaccines_within_days": 30,
+      "books_service": "vaccine_booster_tech",
+      "books_service_if_no_exam_within_months": {
+        "months": 12,
+        "service": "wellness_exam"
+      },
+      "touches": [
+        {
+          "offset_days": -30,
+          "channels": [
+            "email",
+            "sms"
+          ],
+          "template": "vaccine_due_30"
+        },
+        {
+          "offset_days": -7,
+          "channels": [
+            "sms"
+          ],
+          "template": "vaccine_due_7"
+        },
+        {
+          "offset_days": 7,
+          "channels": [
+            "ai_call"
+          ],
+          "template": "vaccine_overdue_call"
+        }
+      ]
+    },
+    {
+      "id": "heartworm_test",
+      "name": "Annual heartworm test",
+      "species": [
+        "dog"
+      ],
+      "trigger": "due_at = last heartworm_test completed + 12 months",
+      "books_service": "heartworm_test",
+      "merge_into": "annual_wellness",
+      "touches": [
+        {
+          "offset_days": -14,
+          "channels": [
+            "sms"
+          ],
+          "template": "heartworm_due"
+        }
+      ]
+    },
+    {
+      "id": "parasite_prevention_refill",
+      "name": "Flea, tick and heartworm prevention refill",
+      "species": [
+        "dog",
+        "cat"
+      ],
+      "trigger": "due_at = prevention_product.supply_end_at - 10 days",
+      "action": "refill_task_with_reply_link",
+      "books_service": null,
+      "touches": [
+        {
+          "offset_days": 0,
+          "channels": [
+            "sms"
+          ],
+          "template": "prevention_refill"
+        },
+        {
+          "offset_days": 14,
+          "channels": [
+            "sms"
+          ],
+          "template": "prevention_refill_2"
+        }
+      ]
+    },
+    {
+      "id": "senior_recheck",
+      "name": "Senior wellness every six months",
+      "species": [
+        "dog",
+        "cat"
+      ],
+      "qualifies_if": {
+        "min_age_years": {
+          "dog": 7,
+          "cat": 10
+        }
+      },
+      "trigger": "due_at = patient.last_wellness_exam_at + 6 months",
+      "books_service": "senior_wellness",
+      "touches": [
+        {
+          "offset_days": -21,
+          "channels": [
+            "email",
+            "sms"
+          ],
+          "template": "senior_due"
+        },
+        {
+          "offset_days": -5,
+          "channels": [
+            "sms"
+          ],
+          "template": "senior_due_5"
+        },
+        {
+          "offset_days": 14,
+          "channels": [
+            "ai_call"
+          ],
+          "template": "senior_overdue_call"
+        }
+      ]
+    },
+    {
+      "id": "puppy_kitten_series",
+      "name": "Puppy and kitten vaccine series",
+      "species": [
+        "dog",
+        "cat"
+      ],
+      "qualifies_if": {
+        "max_age_months": 5
+      },
+      "trigger": "due_at = last puppy_kitten_visit completed + 21 days, until age 16 weeks",
+      "books_service": "puppy_kitten_visit",
+      "touches": [
+        {
+          "offset_days": -5,
+          "channels": [
+            "sms"
+          ],
+          "template": "series_due"
+        },
+        {
+          "offset_days": 3,
+          "channels": [
+            "ai_call"
+          ],
+          "template": "series_overdue_call"
+        }
+      ]
+    },
+    {
+      "id": "post_surgery_recheck",
+      "name": "Post-surgery check-in and recheck",
+      "species": [
+        "dog",
+        "cat"
+      ],
+      "trigger": "due_at = surgery completed + 12 days",
+      "books_service": "recheck_exam",
+      "touches": [
+        {
+          "offset_days": -11,
+          "channels": [
+            "sms"
+          ],
+          "template": "post_op_day1",
+          "notes": "Day after surgery. How is the pet doing. Reply triggers staff task if concern words appear."
+        },
+        {
+          "offset_days": -3,
+          "channels": [
+            "sms"
+          ],
+          "template": "recheck_due"
+        }
+      ]
+    },
+    {
+      "id": "dental_recall",
+      "name": "Annual dental check",
+      "species": [
+        "dog",
+        "cat"
+      ],
+      "trigger": "due_at = patient.last_dental_at + 12 months",
+      "books_service": "wellness_exam",
+      "merge_into": "annual_wellness",
+      "touches": [
+        {
+          "offset_days": -14,
+          "channels": [
+            "email"
+          ],
+          "template": "dental_due"
+        }
+      ]
+    },
+    {
+      "id": "lapsed_client",
+      "name": "Lapsed client win-back",
+      "level": "client",
+      "trigger": "no completed appointment for any active patient in 14 months",
+      "requires": "client.marketing_consent",
+      "books_service": "wellness_exam",
+      "max_touches": 2,
+      "touches": [
+        {
+          "offset_days": 0,
+          "channels": [
+            "email",
+            "sms"
+          ],
+          "template": "winback_1"
+        },
+        {
+          "offset_days": 90,
+          "channels": [
+            "email"
+          ],
+          "template": "winback_2"
+        }
+      ]
+    },
+    {
+      "id": "no_show_recovery",
+      "name": "No-show recovery",
+      "trigger": "appointment.status = no_show",
+      "books_service": "same_as_missed_appointment",
+      "touches": [
+        {
+          "offset_hours": 1,
+          "channels": [
+            "sms"
+          ],
+          "template": "noshow_1"
+        },
+        {
+          "offset_hours": 24,
+          "channels": [
+            "ai_call"
+          ],
+          "template": "noshow_call"
+        },
+        {
+          "offset_days": 7,
+          "channels": [
+            "sms"
+          ],
+          "template": "noshow_final"
+        }
+      ]
+    }
+  ],
+  "household_merge": {
+    "applies_to_rules": [
+      "annual_wellness",
+      "vaccine_due",
+      "heartworm_test",
+      "senior_recheck",
+      "dental_recall"
+    ],
+    "template_single": "{{pet_name}} is due for {{what}}",
+    "template_multi": "{{pet_names_joined}} are due for {{what_joined}}",
+    "deceased_check": "re-evaluate patient.status at send time, not at schedule time"
+  },
+  "templates": {
+    "wellness_due_30": "{{clinic_name}}: {{pet_name}} is due for a wellness exam next month. Book in a tap: {{booking_link}} Reply STOP to opt out.",
+    "wellness_due_7": "{{clinic_name}}: {{pet_name}}'s wellness exam is due next week. Grab a time: {{booking_link}}",
+    "wellness_overdue_call": "Hi {{client_first_name}}, this is {{ai_name}} from {{clinic_name}}. {{pet_name}} is a little overdue for a wellness exam. I have {{slot_1}} or {{slot_2}} if either works.",
+    "vaccine_due_30": "{{clinic_name}}: {{pet_name}} is due for {{vaccine_names}} next month. Book: {{booking_link}} Reply STOP to opt out.",
+    "vaccine_due_7": "{{clinic_name}}: {{pet_name}}'s {{vaccine_names}} is due next week. Book: {{booking_link}}",
+    "vaccine_overdue_call": "Hi {{client_first_name}}, this is {{ai_name}} from {{clinic_name}}. {{pet_name}}'s {{vaccine_names}} is now overdue. I can get that done {{slot_1}} or {{slot_2}}.",
+    "heartworm_due": "{{clinic_name}}: {{pet_name}}'s annual heartworm test is coming up. We can do it at the wellness exam: {{booking_link}}",
+    "prevention_refill": "{{clinic_name}}: {{pet_name}}'s {{product_name}} runs out in about 10 days. Reply REFILL and we'll have it ready for pickup.",
+    "prevention_refill_2": "{{clinic_name}}: Just checking, {{pet_name}}'s {{product_name}} may have run out. Reply REFILL or call us.",
+    "senior_due": "{{clinic_name}}: {{pet_name}} is due for a senior wellness check. Twice-yearly visits catch things early. Book: {{booking_link}}",
+    "senior_due_5": "{{clinic_name}}: {{pet_name}}'s senior check is due this week. Book: {{booking_link}}",
+    "senior_overdue_call": "Hi {{client_first_name}}, this is {{ai_name}} from {{clinic_name}}. {{pet_name}} is due for a senior wellness check. I have {{slot_1}} or {{slot_2}}.",
+    "series_due": "{{clinic_name}}: {{pet_name}}'s next puppy/kitten booster is due in a few days. Book: {{booking_link}}",
+    "series_overdue_call": "Hi {{client_first_name}}, this is {{ai_name}} from {{clinic_name}}. {{pet_name}}'s next booster is due now. I can do {{slot_1}} or {{slot_2}}.",
+    "post_op_day1": "{{clinic_name}}: How is {{pet_name}} doing after yesterday's procedure? Reply with any concerns and the team will call you.",
+    "recheck_due": "{{clinic_name}}: {{pet_name}}'s post-op recheck is due in a few days. Book: {{booking_link}}",
+    "dental_due": "{{clinic_name}}: It's been a year since {{pet_name}}'s dental cleaning. We'll check the teeth at the next wellness exam: {{booking_link}}",
+    "winback_1": "{{clinic_name}}: We haven't seen {{pet_names_joined}} in a while and we'd love to. Book a wellness exam: {{booking_link}} Reply STOP to opt out.",
+    "winback_2": "{{clinic_name}}: Still here for {{pet_names_joined}} whenever you're ready. Book: {{booking_link}}",
+    "noshow_1": "{{clinic_name}}: We missed {{pet_name}} today. Want to rebook? {{slot_1}} or {{slot_2}}: {{booking_link}}",
+    "noshow_call": "Hi {{client_first_name}}, this is {{ai_name}} from {{clinic_name}}. We missed {{pet_name}} yesterday. I can rebook for {{slot_1}} or {{slot_2}}.",
+    "noshow_final": "{{clinic_name}}: Whenever you're ready to rebook {{pet_name}}, here's the link: {{booking_link}}",
+    "deceased_reply": "I am so sorry for your loss. I will make sure you do not receive any more reminders for {{pet_name}}.",
+    "fasting_check_evening": "{{clinic_name}}: {{pet_name}} has a procedure tomorrow. No food after midnight. Water is fine. Reply YES to confirm."
+  },
+  "inbound_reply_handling": {
+    "C": "confirm_appointment",
+    "R": "open_reschedule",
+    "STOP": "opt_out_marketing",
+    "REFILL": "create_refill_task",
+    "deceased_phrases": [
+      "passed away",
+      "died",
+      "put down",
+      "put to sleep",
+      "no longer with us",
+      "crossed the rainbow bridge"
+    ],
+    "deceased_action": "ai_confirms_death_has_happened_and_pet_name_and_species_then_sets_deceased_and_sends_deceased_reply",
+    "moved_phrases": [
+      "moved",
+      "new vet",
+      "go somewhere else",
+      "switched clinics"
+    ],
+    "moved_action": "set_patient_transferred_and_stop",
+    "concern_phrases_on_post_op": [
+      "bleeding",
+      "not eating",
+      "lethargic",
+      "swollen",
+      "vomiting",
+      "licking",
+      "opened"
+    ],
+    "concern_action": "create_urgent_staff_task",
+    "YES": "confirm_fasting_when_fasting_check_open",
+    "if_death_not_confirmed": "do_not_change_patient_status_create_priority_staff_task"
+  },
+  "pre_visit": {
+    "fasting_check": {
+      "applies_to": "services with fasting_required = true",
+      "send_at_local": "19:00",
+      "send_on": "day_before",
+      "channel": "sms",
+      "template": "fasting_check_evening",
+      "reply_by_local": "20:00",
+      "no_reply_action": "create_staff_task_verify_at_drop_off"
+    }
+  }
+}

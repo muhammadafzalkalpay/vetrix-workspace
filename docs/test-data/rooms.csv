@@ -1,0 +1,12 @@
+id,type,name,capacity
+room_001,exam,Exam 1,1
+room_002,exam,Exam 2,1
+room_003,exam,Exam 3,1
+room_004,cat_exam,Cat room,1
+room_005,surgery,Surgery,1
+room_006,dental,Dental,1
+room_007,radiology,X-ray,1
+room_008,treatment,Treatment,4
+room_009,comfort,Comfort room,1
+room_010,isolation,Isolation,1
+room_011,kennel,Kennels,8
