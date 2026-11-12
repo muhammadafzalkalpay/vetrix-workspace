@@ -1,7 +1,10 @@
 // Turns a signed-in person into "who they are, which organization they are
 // working in, and what they may do at each location". Every staff screen and
 // staff API starts here.
-import type { Membership, SqlClient } from "@vetrix/db/runtime";
+import type { Membership, SqlClient, TransactionPool } from "@vetrix/db/runtime";
+
+/** The clinic database pool: runs queries and hands out connections for transactions. */
+export type ClinicPool = SqlClient & TransactionPool;
 import type { StaffAccess } from "@vetrix/domain";
 
 export interface StaffContext {
@@ -11,7 +14,7 @@ export interface StaffContext {
   memberships: Membership[];
   access: StaffAccess;
   /** Pool for this organization's clinic database. */
-  clinic: SqlClient;
+  clinic: ClinicPool;
 }
 
 export type StaffContextResult =
@@ -23,7 +26,7 @@ export type StaffContextResult =
 
 export interface StaffContextDeps {
   memberships(platformUserId: string): Promise<Membership[]>;
-  clinicFor(organizationId: string): Promise<SqlClient>;
+  clinicFor(organizationId: string): Promise<ClinicPool>;
   loadAccess(clinic: SqlClient, platformUserId: string): Promise<StaffAccess | undefined>;
 }
 

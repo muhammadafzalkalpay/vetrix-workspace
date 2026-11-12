@@ -16,7 +16,7 @@ const staff = (locations: number): StaffAccess => ({
 function deps(memberships: Membership[], access: StaffAccess | undefined): StaffContextDeps {
   return {
     memberships: vi.fn(async () => memberships),
-    clinicFor: vi.fn(async (id: string) => ({ query: vi.fn(), id }) as never),
+    clinicFor: vi.fn(async (id: string) => ({ query: vi.fn(), connect: vi.fn(), id }) as never),
     loadAccess: vi.fn(async () => access),
   };
 }
