@@ -1,32 +1,25 @@
-import Link from "next/link";
-import { Badge } from "@/components/ui/badge";
-import { Logo } from "@/components/vetrix/logo";
-import { SignOutButton } from "@/features/auth/sign-out-button";
+import { AppShell } from "@/features/shell/app-shell";
 import { getMessagingMode } from "@/lib/env";
-import { requireStaff } from "@/lib/session";
+import { getSession, requireShell } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
 
 // Signed-in staff area. Every page below this layout requires an active staff
-// record in the chosen organization.
+// record in the chosen organization and a location they can open.
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  const ctx = await requireStaff();
-  const sandbox = getMessagingMode() === "sandbox";
+  const shell = await requireShell();
+  const session = await getSession();
   return (
-    <div className="min-h-dvh">
-      <header className="flex h-14 items-center gap-3 border-b bg-card px-4 sm:px-6">
-        <Link href="/overview" aria-label="Vetrix overview" className="rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-          <Logo />
-        </Link>
-        <span className="hidden text-small text-muted-foreground sm:inline">{ctx.organization.organization_name}</span>
-        {sandbox && (
-          <Badge variant="secondary" className="ml-auto" title="Calls and texts are simulated and not sent">
-            Sandbox
-          </Badge>
-        )}
-        <SignOutButton size="sm" className={sandbox ? "" : "ml-auto"} />
-      </header>
-      <main className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6">{children}</main>
-    </div>
+    <AppShell
+      user={{ name: shell.access.displayName, email: session?.user.email ?? "" }}
+      organization={{ id: shell.organization.organization_id, name: shell.organization.organization_name }}
+      organizationCount={shell.memberships.length}
+      location={{ id: shell.location.id, name: shell.location.name }}
+      locations={shell.locations.map((l) => ({ id: l.id, name: l.name }))}
+      permissions={[...shell.permissions]}
+      sandbox={getMessagingMode() === "sandbox"}
+    >
+      {children}
+    </AppShell>
   );
 }

@@ -1,43 +1,11 @@
 import type { CSSProperties } from "react";
 import { ShieldCheck } from "lucide-react";
-import { Logo } from "@/components/vetrix/logo";
+import { BrandBackdrop, Highlight, LogoOnDark } from "@/components/vetrix/brand-backdrop";
 import { BookingScene } from "@/features/auth/booking-scene";
 
 export const dynamic = "force-dynamic";
 
 const delay = (seconds: number): CSSProperties => ({ animationDelay: `${seconds}s` });
-
-/** Light logo for the dark panel. */
-function LogoOnDark() {
-  return <Logo className="text-white [&_g]:fill-navy-800 [&_path]:stroke-white [&_rect]:fill-white" />;
-}
-
-/** One wave, drawn twice side by side so it can drift sideways without a seam. */
-function Wave({ className, d }: { className: string; d: string }) {
-  return (
-    <svg viewBox="0 0 1600 200" preserveAspectRatio="none" className={`absolute bottom-0 left-0 h-full w-[200%] ${className}`}>
-      <path d={d} />
-      <path d={d} transform="translate(800 0)" />
-    </svg>
-  );
-}
-
-const WAVE_A = "M0 120 C 130 70, 270 70, 400 110 S 670 160, 800 120 V200 H0 Z";
-const WAVE_B = "M0 140 C 150 100, 260 170, 400 140 S 650 100, 800 140 V200 H0 Z";
-
-/** Calm navy gradient with soft teal waves along the bottom. */
-function BrandBackdrop() {
-  return (
-    <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
-      <div className="absolute inset-0 bg-gradient-to-b from-navy-950 via-navy-800 to-navy-700" />
-      <div className="absolute -right-40 -top-40 size-[520px] rounded-full bg-[radial-gradient(circle,rgba(45,212,191,0.18),transparent_65%)]" />
-      <div className="absolute inset-x-0 bottom-0 h-[38%]">
-        <Wave className="vx-drift-slow fill-primary/25" d={WAVE_A} />
-        <Wave className="vx-drift fill-accent/15" d={WAVE_B} />
-      </div>
-    </div>
-  );
-}
 
 /** Form on the right; from large screens up, a booking scene on the left. */
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
@@ -52,26 +20,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         <div className="relative grid max-w-xl gap-4">
           <p className="vx-fade-up text-display font-semibold" style={delay(0.1)}>
             Every call answered.{" "}
-            <span className="relative inline-block whitespace-nowrap">
-              Every pet brought back.
-              <svg
-                className="absolute -bottom-2 left-0 h-3 w-full text-highlight"
-                viewBox="0 0 300 12"
-                preserveAspectRatio="none"
-                fill="none"
-              >
-                <path
-                  pathLength={1}
-                  className="vx-draw"
-                  style={{ ...delay(0.9), animationDuration: "1.1s" }}
-                  d="M3 9 C 70 3, 150 3, 297 7"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                  strokeLinecap="round"
-                  strokeDasharray="1"
-                />
-              </svg>
-            </span>
+            <Highlight delay={0.9}>Every pet brought back.</Highlight>
           </p>
           <p className="vx-fade-up max-w-md text-h3 font-normal text-white/75" style={delay(0.25)}>
             Owners book online or by phone. Vetrix fills the right slot with the right doctor and room.
