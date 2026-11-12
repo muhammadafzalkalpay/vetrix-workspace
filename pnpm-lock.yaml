@@ -38,6 +38,9 @@ importers:
       '@vetrix/domain':
         specifier: workspace:*
         version: link:../../packages/domain
+      '@vetrix/pack':
+        specifier: workspace:*
+        version: link:../../packages/pack
       better-auth:
         specifier: 1.7.14
         version: 1.7.14(next@15.5.29(@types/node@22.20.5)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(vitest@3.2.7(@types/node@22.20.5)(jiti@2.7.0)(lightningcss@1.33.0)(tsx@4.23.15))

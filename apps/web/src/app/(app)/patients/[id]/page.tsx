@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { AlertTriangle, Pencil, Syringe } from "lucide-react";
+import { AlertTriangle, CalendarPlus, Pencil, Syringe } from "lucide-react";
 import { ageInMonths, formatAge, formatPhone } from "@vetrix/domain";
 import { getPatient } from "@vetrix/db/runtime";
 import { DetailList, Panel } from "@/components/patterns/detail-list";
@@ -33,6 +33,7 @@ export default async function PatientPage({
   const p = await orNotFound(getPatient(shell.clinic, shell.location.id, id));
   const today = clinicToday(shell.location.timezone);
   const canEdit = shell.permissions.has("patients.manage");
+  const canBook = shell.permissions.has("schedule.manage");
   const deceased = p.status === "deceased";
   const age = formatAge(ageInMonths({ dateOfBirth: p.date_of_birth, approxAgeMonths: p.approx_age_months }, today));
 
@@ -58,11 +59,18 @@ export default async function PatientPage({
           </span>
         }
         actions={
-          canEdit && (
-            <Link href={`/patients/${p.id}/edit`} className={cn(buttonVariants({ size: "sm" }), "bg-white text-primary-dark hover:bg-white/90")}>
-              <Pencil aria-hidden /> Edit
-            </Link>
-          )
+          <>
+            {canBook && !deceased && (
+              <Link href={`/schedule/book?patient=${p.id}`} className={cn(buttonVariants({ size: "sm" }), "bg-white text-primary-dark hover:bg-white/90")}>
+                <CalendarPlus aria-hidden /> Book visit
+              </Link>
+            )}
+            {canEdit && (
+              <Link href={`/patients/${p.id}/edit`} className={cn(buttonVariants({ size: "sm", variant: "outline" }), "border-white/30 bg-white/10 text-white hover:bg-white/20")}>
+                <Pencil aria-hidden /> Edit
+              </Link>
+            )}
+          </>
         }
       />
 

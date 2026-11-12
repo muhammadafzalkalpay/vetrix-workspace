@@ -124,7 +124,13 @@ export async function loadPatientForBooking(
 }
 
 /** Everything findSlots needs for a location over a range of days. */
-export async function loadSchedulingData(db: SqlClient, locationId: string, fromDate: string, days: number): Promise<SchedulingData> {
+export async function loadSchedulingData(
+  db: SqlClient,
+  locationId: string,
+  fromDate: string,
+  days: number,
+  opts: { excludeAppointmentId?: string } = {},
+): Promise<SchedulingData> {
   const loc = await db.query<{ timezone: string }>(`SELECT timezone FROM locations WHERE id = $1`, [locationId]);
   const timezone = loc.rows[0]?.timezone;
   if (!timezone) throw new NotFoundError("Location", locationId);
@@ -162,8 +168,10 @@ export async function loadSchedulingData(db: SqlClient, locationId: string, from
     db.query<EquipmentUnit>(`SELECT id, type, exclusive FROM equipment WHERE location_id = $1 ORDER BY name`, [locationId]),
     db.query<{ provider_id: string | null; room_id: string | null; equipment_id: string | null; s: Date; e: Date }>(
       `SELECT provider_id, room_id, equipment_id, lower(held_range) AS s, upper(held_range) AS e
-       FROM appointment_resources WHERE location_id = $1 AND active AND held_range && tstzrange($2, $3)`,
-      [locationId, rangeStart, rangeEnd],
+       FROM appointment_resources
+       WHERE location_id = $1 AND active AND held_range && tstzrange($2, $3)
+         AND ($4::uuid IS NULL OR appointment_id <> $4::uuid)`,
+      [locationId, rangeStart, rangeEnd, opts.excludeAppointmentId ?? null],
     ),
   ]);
 
@@ -451,4 +459,22 @@ export async function listAppointmentsForDay(db: SqlClient, locationId: string, 
     [locationId, date],
   );
   return rows;
+}
+
+/** One visit with names, for the reschedule screen. */
+export async function getAppointment(db: SqlClient, locationId: string, appointmentId: string): Promise<CalendarAppointment & { service_id: string }> {
+  const { rows } = await db.query<CalendarAppointment & { service_id: string }>(
+    `SELECT a.id, a.start_at, a.end_at, a.status, a.triage_level, a.booked_by, a.service_id,
+            p.id AS patient_id, p.name AS patient_name, p.species,
+            c.id AS client_id, c.first_name || ' ' || c.last_name AS client_name,
+            s.name AS service_name, s.category,
+            pr.id AS provider_id, pr.display_name AS provider_name, r.id AS room_id, r.name AS room_name, r.type AS room_type
+     FROM appointments a
+     JOIN patients p ON p.id = a.patient_id JOIN clients c ON c.id = a.client_id JOIN services s ON s.id = a.service_id
+     LEFT JOIN providers pr ON pr.id = a.provider_id LEFT JOIN rooms r ON r.id = a.room_id
+     WHERE a.id = $1 AND a.location_id = $2`,
+    [appointmentId, locationId],
+  );
+  if (!rows[0]) throw new NotFoundError("Appointment", appointmentId);
+  return rows[0];
 }
