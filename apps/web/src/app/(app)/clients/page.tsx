@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ChevronRight, Plus, Users } from "lucide-react";
+import { ChevronRight, Plus, Upload, Users } from "lucide-react";
 import { formatPhone } from "@vetrix/domain";
 import { searchClients } from "@vetrix/db/runtime";
 import { EmptyState } from "@/components/patterns/empty-state";
@@ -23,6 +23,7 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
   const page = Math.max(1, Number(pageParam) || 1);
   const { rows, total } = await searchClients(shell.clinic, shell.location.id, { q, limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE });
   const canAdd = shell.permissions.has("clients.manage");
+  const canImport = canAdd && shell.permissions.has("patients.manage");
 
   return (
     <>
@@ -31,9 +32,16 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
         description="Owners and households."
         actions={
           canAdd && (
-            <Link href="/clients/new" className={cn(buttonVariants(), "bg-white text-primary-dark hover:bg-white/90")}>
-              <Plus aria-hidden /> Add client
-            </Link>
+            <>
+              {canImport && (
+                <Link href="/clients/import" className={cn(buttonVariants({ variant: "outline" }), "border-white/30 bg-white/10 text-white hover:bg-white/20")}>
+                  <Upload aria-hidden /> Import
+                </Link>
+              )}
+              <Link href="/clients/new" className={cn(buttonVariants(), "bg-white text-primary-dark hover:bg-white/90")}>
+                <Plus aria-hidden /> Add client
+              </Link>
+            </>
           )
         }
       />
@@ -49,7 +57,7 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
         <EmptyState
           icon={Users}
           title={q ? "No clients match that search" : "No clients yet"}
-          description={q ? "Try part of the name, the last 4 digits of the phone, or the pet's name." : "Add a client or import them from your practice system."}
+          description={q ? "Try part of the name, the last 4 digits of the phone, or the pet's name." : "Add a client, or import your records from your practice software."}
         />
       ) : (
         <ul className="grid gap-2">

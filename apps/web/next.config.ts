@@ -11,6 +11,8 @@ const nextConfig: NextConfig = {
   // Trace files from the monorepo root so the workspace packages are included.
   outputFileTracingRoot: path.join(import.meta.dirname, "../.."),
   transpilePackages: ["@vetrix/domain", "@vetrix/db", "@vetrix/pack"],
+  // Clinic CSV imports are sent through a server action (each file up to 10 MB).
+  experimental: { serverActions: { bodySizeLimit: "25mb" } },
 };
 
 export default nextConfig;
