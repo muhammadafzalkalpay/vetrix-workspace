@@ -1,18 +1,29 @@
 import { describe, expect, it } from "vitest";
-import { parseEnv } from "./env";
+import { getMessagingMode, parseEnv } from "./env";
 import { createLogger } from "./logger";
 
 const base = { REGISTRY_DATABASE_URL: "postgres://u:p@host/db" };
 
 describe("environment config", () => {
-  it("defaults to demo mode", () => {
-    expect(parseEnv(base).VETRIX_DEMO_MODE).toBe(true);
+  it("defaults to sandbox outside production", () => {
+    expect(parseEnv(base).MESSAGING_MODE).toBe("sandbox");
   });
 
-  it("requires sending credentials when demo mode is off", () => {
-    expect(() => parseEnv({ ...base, VETRIX_DEMO_MODE: "false" })).toThrow(
+  it("requires an explicit messaging mode in production", () => {
+    expect(() => parseEnv({ ...base, NODE_ENV: "production" })).toThrow(/MESSAGING_MODE/);
+    expect(parseEnv({ ...base, NODE_ENV: "production", MESSAGING_MODE: "sandbox" }).MESSAGING_MODE).toBe("sandbox");
+  });
+
+  it("requires sending credentials in live mode", () => {
+    expect(() => parseEnv({ ...base, MESSAGING_MODE: "live" })).toThrow(
       /TWILIO_ACCOUNT_SID[\s\S]*SENDGRID_API_KEY/,
     );
+  });
+
+  it("treats anything but an explicit live as sandbox for labels", () => {
+    expect(getMessagingMode({})).toBe("sandbox");
+    expect(getMessagingMode({ MESSAGING_MODE: "LIVE" })).toBe("sandbox");
+    expect(getMessagingMode({ MESSAGING_MODE: "live" })).toBe("live");
   });
 
   it("names the missing variable without printing values", () => {

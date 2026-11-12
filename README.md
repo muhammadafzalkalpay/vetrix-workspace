@@ -2,17 +2,17 @@
 
 The AI front desk for veterinary clinics. Every call answered. Every pet brought back.
 
-This repo is set up for the V1 client demo. Feature work starts at Milestone 1 of the build plan.
+Production application. Hosted on GCP Cloud Run with Neon Postgres.
 
 ## Structure
 
 | Folder | Purpose |
 |---|---|
 | `apps/web` | Next.js app: staff screens, APIs, webhooks, and scheduled routes |
-| `apps/voice` | Planned Node service for live calls. Not needed for the demo |
+| `apps/voice` | Node service for live calls (Twilio audio to OpenAI Realtime) |
 | `packages/domain` | Booking, triage, reminder, waitlist, and messaging rules |
 | `packages/db` | Neon access and tenant routing |
-| `packages/pack` | Pack loading and validation, plus the veterinary pack v0.2 |
+| `packages/pack` | Pack loading and validation, plus the veterinary pack v0.2.2 |
 | `db/migrations` | SQL for the registry database (8 tables) and clinic database (57 tables) |
 | `docs` | Product pack documents and test data |
 
@@ -35,6 +35,7 @@ This repo is set up for the V1 client demo. Feature work starts at Milestone 1 o
 ```
 pnpm typecheck
 pnpm lint
+pnpm test
 pnpm build
 ```
 
@@ -42,4 +43,4 @@ pnpm build
 
 - Business rules go in `packages/domain`, not in React components or route handlers.
 - Vertical wording comes from the pack. No Aesthetix terms appear in Vetrix screens or messages.
-- Demo mode simulates every call and text.
+- `MESSAGING_MODE=sandbox` simulates every call and text and labels it. Production must set the mode explicitly.

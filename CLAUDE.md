@@ -9,8 +9,10 @@ Read `docs/HANDOFF.md` for the full planning history.
 - Stack: Next.js 15, TypeScript, Tailwind, shadcn/ui, Neon Postgres, Twilio (voice, SMS, recordings in V1), SendGrid (email), OpenAI Realtime, Better Auth. Hosted on GCP Cloud Run (`web` and `voice` services), Cloud Scheduler for the every-minute job dispatcher, Secret Manager for secrets.
 - One database per organization, with its locations inside it. A shared registry database routes each organization to its database.
 - `vertical_id` belongs to the location. Veterinary rules come from the versioned pack in `packages/pack/veterinary` (v0.2). Pack v0.2 is the approved baseline (12 Nov 2026); it replaces the v0.1 docs where they disagree.
-- The client demo uses real Neon tables with seeded data. Calls and texts are simulated and labelled.
-- Live call audio will run in `apps/voice`, a separate Node service, because calls hold one connection open for minutes. Not needed for the demo.
+- This is a production application. Do not use the word "demo" in code, screens, config or docs. Use "sandbox" for simulated messaging and "sample clinic" for seeded data.
+- `MESSAGING_MODE=sandbox` simulates every call and text, saves it and labels it "Sandbox". `live` sends through Twilio and SendGrid. Production must set it explicitly.
+- Sample clinic data is seeded only into non-production databases.
+- Live call audio will run in `apps/voice`, a separate Node service, because calls hold one connection open for minutes. Built after the web app works end to end in sandbox mode.
 - Business rules live in `packages/domain`, never in React components or route handlers.
 - New clinic databases are created automatically at signup through the Neon API. A CLI script covers manual creation.
 - The schema is created manually from `db/migrations`. Registry: 8 tables. Clinic: 57 tables. Never run both files in one database. Add changes as new numbered files.
@@ -23,7 +25,7 @@ Read `docs/HANDOFF.md` for the full planning history.
 - No Aesthetix terms in Vetrix screens, emails, or texts.
 
 ## Build plan
-Milestones: 1 Foundation, 2 Clients, pets and booking, 3 AI front desk and triage, 4 Reminders, messages and waitlist, 5 Demo experience, 6 Quality and handover.
+Milestones: 1 Foundation, 2 Clients, pets and booking, 3 AI front desk and triage, 4 Reminders, messages and waitlist, 5 Launch readiness (onboarding, reports, sample clinic data for staging, marketing site), 6 Quality and handover.
 Do not start a milestone until Muhammad approves it.
 
 ## Working style

@@ -1,5 +1,5 @@
 -- Vetrix clinic database: 57 tables.
--- Run this in the vetrix_demo_clinic database. Run the whole file once, in order.
+-- Run this in each organization's clinic database. Run the whole file once, in order.
 -- platform_user_ref, config_pack_ref and vertical_id point to the registry.
 -- They are stored IDs, because a foreign key cannot cross databases.
 

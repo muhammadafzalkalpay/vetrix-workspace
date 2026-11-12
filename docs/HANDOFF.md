@@ -24,7 +24,7 @@ Summary of the planning conversation on claude.ai, 4 to 12 November 2026. Read t
 
 ## Architecture
 - Next.js on GCP Cloud Run for staff screens, APIs, webhooks and scheduled routes (decision of 12 Nov 2026, replacing Vercel). Cloud Scheduler calls the job dispatcher every minute.
-- `apps/voice`: separate Node service for live Twilio audio to OpenAI Realtime, also on Cloud Run (connections up to 60 minutes). Not needed for the demo, where calls are simulated.
+- `apps/voice`: separate Node service for live Twilio audio to OpenAI Realtime, also on Cloud Run (connections up to 60 minutes). Built after the web app works end to end in sandbox mode, where calls are simulated.
 - Business rules in `packages/domain`, database access and tenant routing in `packages/db`, pack loading in `packages/pack`.
 - Appointments live in Postgres, not Google Calendar. Each held provider, room or equipment unit is a row in `appointment_resources`. Exclusion constraints block double-booking of exclusive resources. Shared-capacity rooms need a locked count check in the booking service.
 - The messaging gate re-checks pet status, do-not-contact, consent and quiet hours at send time for every outbound message.
@@ -33,7 +33,7 @@ Summary of the planning conversation on claude.ai, 4 to 12 November 2026. Read t
 - Neon. One shared registry database plus one clinic database per organization, with all its locations inside.
 - Registry, 8 tables: `db/migrations/registry/001_registry.sql`. Clinic, 57 tables: `db/migrations/clinic/002_clinic.sql`. Total 65.
 - Both files were tested on a Postgres engine. All columns match the ERD, every foreign key has an index, and overlap tests were rejected as expected.
-- Neon project `vetrix`, development branch `schema-dev`, databases `vetrix_registry` and `vetrix_demo_clinic`. Keep `production` empty until `schema-dev` is reviewed.
+- Neon project `vetrix`, development branch `schema-dev`, databases `vetrix_registry` and the first clinic database (created as `vetrix_demo_clinic`; rename to `clinic_dev`). Keep `production` empty until `schema-dev` is reviewed.
 - Status on 11 November: both scripts appear to have been run in the same database. Confirm the registry tables are only in `vetrix_registry`, then drop them from the clinic database.
 - `messages` and `audit_logs` start as normal tables. Partition by month later if volume requires it.
 
@@ -61,13 +61,13 @@ Summary of the planning conversation on claude.ai, 4 to 12 November 2026. Read t
 - W1 new caller to booking, W2 reschedule or cancel, W3 confirmations, W4 no-show follow-up, W5 due reminders, W6 emergency triage, W7 waitlist fill.
 - Emergency triage overrides every call. Open: warm transfer with a summary. Closed: ER details by voice and text, plus a staff alert. Never transfer to a closed line.
 
-## Client demo brief
-- Demo clinic: Vetrix Veterinary Center, Main Veterinary Clinic, Asia/Karachi for demo data, AI persona Riley.
+## Sample clinic (staging data)
+- Sample clinic: Vetrix Veterinary Center, Main Veterinary Clinic, Asia/Karachi time zone, AI persona Riley. Seeded only into non-production databases.
 - Staff: Dr. Ahmed and Dr. Sarah (vets), John (technician), Ali (client service).
 - Clients: Sara Khan, Muhammad Ali, John Smith. Pets: Rufus (dog), Tommy (cat), Max (dog), Bella (rabbit).
 - 13 navigation areas: Overview, Calendar, Appointments, Clients, Patients, Due list, Waitlist, Calls and AI front desk, Staff and providers, Services and resources, Reports, Settings, Architecture and ERD.
 - Show all seven workflows, the vertical selector, ten-step onboarding, and an `/architecture` page with an interactive ERD.
-- Label Demo Mode and every simulated call or text. Never send real messages.
+- In sandbox mode, label every simulated call or text. Never send real messages.
 
 ## Artifacts on claude.ai
 - Vetrix Visual PRD: scope, flows, data, guardrails, decisions.
@@ -81,11 +81,12 @@ Summary of the planning conversation on claude.ai, 4 to 12 November 2026. Read t
 - Clinic databases are provisioned automatically through the Neon API.
 - Database split confirmed: registry and clinic tables are in separate databases.
 - Milestone 1 approved.
+- Production application: the word "demo" is not used. Simulated messaging is "sandbox" (`MESSAGING_MODE`), seeded data is the "sample clinic". Milestone 5 is "Launch readiness".
 
 ## Next steps
 1. Fix the database split and confirm 8 registry and 57 clinic tables.
 2. Push this repo to GitHub.
-3. Muhammad approves Milestone 1: pack loader, tenant routing, Neon connection, seeded demo clinic, brand and app shell.
+3. Muhammad approves Milestone 1: pack loader, tenant routing, Neon connection, seeded sample clinic, brand and app shell.
 
 ## Working style
 - Muhammad prefers concise, practical answers and iterative changes.
