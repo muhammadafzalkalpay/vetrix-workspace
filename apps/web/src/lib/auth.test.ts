@@ -79,6 +79,6 @@ describe("sign-in emails", () => {
   });
 
   it("never prints links in production", () => {
-    expect(() => createAuthEmailSender({ NODE_ENV: "production" }, quiet)).toThrow(/required in production/);
+    expect(() => createAuthEmailSender({ NODE_ENV: "production", SENDGRID_API_KEY: undefined, EMAIL_FROM: undefined }, quiet)).toThrow(/required in production/);
   });
 });

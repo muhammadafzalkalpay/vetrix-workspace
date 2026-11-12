@@ -17,7 +17,7 @@ export const manifestSchema = z.object({
 
 // labels.json: nested strings, e.g. labels.provider_role.dvm
 type LabelTree = { [key: string]: string | LabelTree };
-const labelTree: z.ZodType<LabelTree> = z.lazy(() => z.record(z.union([nonEmpty, labelTree])));
+const labelTree: z.ZodType<LabelTree> = z.lazy(() => z.record(z.string(), z.union([nonEmpty, labelTree])));
 
 export const labelsSchema = z
   .object({
@@ -49,7 +49,7 @@ const bookableService = z
     drop_off_window: window.optional(),
     fasting_required: z.boolean(),
     requires_preop_bloodwork: z.boolean(),
-    prerequisites: z.record(z.unknown()),
+    prerequisites: z.record(z.string(), z.unknown()),
     price_range_usd: z.tuple([z.number().nonnegative(), z.number().nonnegative()]),
     bookable_by_ai: z.boolean(),
     follow_up_rule: id.optional(),
@@ -193,7 +193,7 @@ export const triageSchema = z
       .passthrough(),
     emergency_triggers: z.array(trigger).min(1),
     urgent_triggers: z.array(trigger).min(1),
-    scripts: z.record(nonEmpty),
+    scripts: z.record(z.string(), nonEmpty),
   })
   .passthrough();
 
@@ -247,8 +247,8 @@ export const retentionSchema = z
         .passthrough(),
     ),
     household_merge: z.object({ applies_to_rules: z.array(id) }).passthrough(),
-    templates: z.record(nonEmpty),
-    inbound_reply_handling: z.record(z.unknown()),
+    templates: z.record(z.string(), nonEmpty),
+    inbound_reply_handling: z.record(z.string(), z.unknown()),
     pre_visit: z.object({
       fasting_check: z
         .object({ send_at_local: hhmm, reply_by_local: hhmm, template: id })
@@ -281,8 +281,8 @@ export const brandSchema = z
     vertical_id: id,
     product_name: nonEmpty,
     ai_persona: z.object({ default_name: nonEmpty, clinic_can_rename: z.boolean() }).passthrough(),
-    colors: z.record(z.object({ token: z.string().startsWith("--"), hex }).passthrough()),
-    room_lane_colors: z.record(hex),
+    colors: z.record(z.string(), z.object({ token: z.string().startsWith("--"), hex }).passthrough()),
+    room_lane_colors: z.record(z.string(), hex),
   })
   .passthrough();
 

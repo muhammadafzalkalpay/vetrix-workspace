@@ -11,6 +11,7 @@ export const locationOverridesSchema = z
     ai_name: z.string().trim().min(1).max(40).optional(),
     services: z
       .record(
+        z.string(),
         z
           .object({
             enabled: z.boolean().optional(),
@@ -21,7 +22,7 @@ export const locationOverridesSchema = z
           .strict(),
       )
       .optional(),
-    retention_rules: z.record(z.object({ enabled: z.boolean() }).strict()).optional(),
+    retention_rules: z.record(z.string(), z.object({ enabled: z.boolean() }).strict()).optional(),
   })
   .strict();
 
