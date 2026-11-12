@@ -23,8 +23,8 @@ Summary of the planning conversation on claude.ai, 4 to 12 November 2026. Read t
 - Security note for Lumière: `/api/voice/tool` has no auth check and runs whatever tool name it receives. Fix it in Lumière separately.
 
 ## Architecture
-- Next.js on Vercel for staff screens, APIs, webhooks and scheduled routes.
-- `apps/voice`: separate Node service for live Twilio audio to OpenAI Realtime, hosted on Fly.io, Railway or Render. Vercel WebSockets close at the function's maximum duration, which could cut a call. Not needed for the demo, where calls are simulated.
+- Next.js on GCP Cloud Run for staff screens, APIs, webhooks and scheduled routes (decision of 12 Nov 2026, replacing Vercel). Cloud Scheduler calls the job dispatcher every minute.
+- `apps/voice`: separate Node service for live Twilio audio to OpenAI Realtime, also on Cloud Run (connections up to 60 minutes). Not needed for the demo, where calls are simulated.
 - Business rules in `packages/domain`, database access and tenant routing in `packages/db`, pack loading in `packages/pack`.
 - Appointments live in Postgres, not Google Calendar. Each held provider, room or equipment unit is a row in `appointment_resources`. Exclusion constraints block double-booking of exclusive resources. Shared-capacity rooms need a locked count check in the booking service.
 - The messaging gate re-checks pet status, do-not-contact, consent and quiet hours at send time for every outbound message.
@@ -74,6 +74,13 @@ Summary of the planning conversation on claude.ai, 4 to 12 November 2026. Read t
 - Vetrix Scalable ERD: all 65 tables with plain-language column notes.
 - Vetrix Architecture Walkthrough: five interactive scenarios.
 - Vetrix Build Plan: milestones and the manual schema order.
+
+## Decisions of 12 November 2026
+- Pack v0.2 is the baseline over the v0.1 docs.
+- Hosting: GCP Cloud Run. Auth: Better Auth. Email: SendGrid. Recordings stay in Twilio for V1.
+- Clinic databases are provisioned automatically through the Neon API.
+- Database split confirmed: registry and clinic tables are in separate databases.
+- Milestone 1 approved.
 
 ## Next steps
 1. Fix the database split and confirm 8 registry and 57 clinic tables.

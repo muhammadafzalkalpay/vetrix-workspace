@@ -40,3 +40,7 @@ Household hh_006 has three active pets. If two or more have a reminder inside th
 ## Vaccine note
 
 Vaccine due dates in `vaccine_records.csv` are set per patient, so a patient's rabies and core vaccine fall due on the same day. The engine must group them into one message ("rabies and DAPP"), which is why the vaccine counts above are per patient, not per record.
+
+## Data correction (12 Nov 2026)
+
+18 patients had a date of birth after their first exam, vaccine or record date. Their `date_of_birth` was moved to one year before their earliest dated record. None became senior, and every count above was recomputed and is unchanged. The importer must flag any record dated before birth.

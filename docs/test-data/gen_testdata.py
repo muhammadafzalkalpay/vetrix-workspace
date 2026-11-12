@@ -1,3 +1,5 @@
+# NOTE (12 Nov 2026): patients.csv was corrected after generation. 18 birth dates that fell after
+# the first exam or vaccine were moved earlier. Re-running this script brings the bad dates back.
 import csv, random, datetime as dt, os, json
 
 random.seed(20261103)

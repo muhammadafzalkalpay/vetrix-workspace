@@ -1,7 +1,7 @@
 id,client_id,name,species,breed,sex,neutered,date_of_birth,weight_kg,color_markings,microchip_number,status,deceased_date,temperament_flags,medical_alerts,active_prescriptions,last_wellness_exam_at,last_dental_at,last_surgery_at,referring_clinic,created_at
-pat_001,cli_001,Penny,dog,Australian Shepherd,male,false,2026-07-17,22.0,,9851000000001,active,,,,false,2026-01-17,,,,2025-06-01
+pat_001,cli_001,Penny,dog,Australian Shepherd,male,false,2022-10-16,22.0,,9851000000001,active,,,,false,2026-01-17,,,,2025-06-01
 pat_002,cli_001,Gus,dog,German Shepherd,female,true,2017-11-05,14.6,,9851000000002,active,,,,false,2025-11-19,,,,2025-06-01
-pat_003,cli_002,Oliver,cat,Domestic Shorthair,female,false,2024-11-03,4.1,,9851000000003,active,,cat_carrier_required,,false,2025-11-21,,2026-10-24,,2025-06-01
+pat_003,cli_002,Oliver,cat,Domestic Shorthair,female,false,2022-09-21,4.1,,9851000000003,active,,cat_carrier_required,,false,2025-11-21,,2026-10-24,,2025-06-01
 pat_004,cli_003,Luna,dog,Australian Shepherd,male,true,2022-11-04,18.8,,,active,,,,false,2025-10-06,,,,2025-06-01
 pat_005,cli_004,Cooper,dog,Corgi,male,false,2016-11-05,7.7,,9851000000005,active,,,,false,2025-10-17,,,,2025-06-01
 pat_006,cli_004,Simba,cat,Maine Coon,female,true,2013-11-06,5.6,,9851000000006,active,,cat_carrier_required,,false,2025-09-27,,,,2025-06-01
@@ -12,7 +12,7 @@ pat_010,cli_006,Jack,dog,Husky,female,true,2019-11-05,32.8,,9851000000010,active
 pat_011,cli_008,Duke,dog,Dachshund,male,true,2015-11-06,24.9,,9851000000011,active,,,,false,2026-01-28,2025-11-14,,,2025-06-01
 pat_012,cli_009,Mittens,cat,Domestic Shorthair,female,false,2017-11-05,3.9,,,active,,cat_carrier_required,,false,2025-11-16,,,,2025-06-01
 pat_013,cli_010,Tucker,dog,Dachshund,female,true,2019-11-05,31.5,,9851000000013,active,,,,false,2025-11-13,,,,2025-06-01
-pat_014,cli_010,Sadie,dog,Corgi,female,true,2023-11-04,18.4,,9851000000014,active,,aggressive;needs_muzzle,,false,2025-10-05,,,,2025-06-01
+pat_014,cli_010,Sadie,dog,Corgi,female,true,2022-09-21,18.4,,9851000000014,active,,aggressive;needs_muzzle,,false,2025-10-05,,,,2025-06-01
 pat_015,cli_011,Binx,cat,Maine Coon,male,true,2018-11-05,5.6,,9851000000015,active,,cat_carrier_required,,false,2025-10-29,,,,2025-06-01
 pat_016,cli_012,Bear,dog,Corgi,male,true,2019-11-05,19.2,,,active,,,,false,2025-09-14,,,,2025-06-01
 pat_017,cli_013,Gus,dog,Mixed,male,true,2020-11-04,21.5,,9851000000017,active,,,,false,2025-10-01,,,,2025-06-01
@@ -20,19 +20,19 @@ pat_018,cli_013,Felix,cat,Persian,female,true,2018-11-05,4.6,,9851000000018,acti
 pat_019,cli_014,Oliver,dog,Husky,male,true,2017-11-05,15.2,,9851000000019,active,,,,false,2025-08-27,,,,2025-06-01
 pat_020,cli_015,Rosie,dog,Labrador Retriever,male,false,2013-11-06,11.4,,,active,,,,false,2026-03-22,,,,2025-06-01
 pat_021,cli_016,Mochi,cat,Persian,female,true,2017-11-05,5.8,,9851000000021,active,,cat_carrier_required,,false,2026-03-23,,,,2025-06-01
-pat_022,cli_016,Hazel,dog,Corgi,male,false,2026-07-17,17.2,,9851000000022,active,,anxious,,false,2025-11-04,2025-11-08,,,2025-06-01
+pat_022,cli_016,Hazel,dog,Corgi,male,false,2022-11-12,17.2,,9851000000022,active,,anxious,,false,2025-11-04,2025-11-08,,,2025-06-01
 pat_023,cli_017,Maggie,dog,Mixed,female,false,2018-11-05,6.8,,9851000000023,active,,,,false,2025-11-28,,,,2025-06-01
 pat_024,cli_018,Nova,cat,Domestic Shorthair,female,false,2019-11-05,3.6,,,active,,cat_carrier_required,,false,2025-10-11,,,,2025-06-01
-pat_025,cli_018,Hazel,dog,Boxer,male,false,2026-05-05,25.4,,9851000000025,active,,,,false,2025-11-02,,,,2025-06-01
+pat_025,cli_018,Hazel,dog,Boxer,male,false,2022-11-12,25.4,,9851000000025,active,,,,false,2025-11-02,,,,2025-06-01
 pat_026,cli_018,Duke,dog,Beagle,male,true,2022-11-04,8.2,,9851000000026,active,,,,false,2025-09-22,,,,2025-06-01
 pat_027,cli_020,Pumpkin,cat,Domestic Shorthair,male,true,2016-11-05,5.1,,9851000000027,active,,cat_carrier_required,,true,2025-09-13,,,,2025-06-01
-pat_028,cli_021,Jack,dog,Chihuahua,female,false,2026-07-17,23.5,,,active,,,,false,2025-07-17,,,,2025-06-01
+pat_028,cli_021,Jack,dog,Chihuahua,female,false,2023-05-24,23.5,,,active,,,,false,2025-07-17,,,,2025-06-01
 pat_029,cli_022,Nala,dog,Boxer,male,true,2017-11-05,9.9,,9851000000029,active,,,,false,2025-07-10,,,,2025-06-01
-pat_030,cli_022,Felix,cat,Ragdoll,female,false,2026-05-05,4.8,,9851000000030,active,,cat_carrier_required,,false,2026-02-04,,,,2025-06-01
+pat_030,cli_022,Felix,cat,Ragdoll,female,false,2022-10-31,4.8,,9851000000030,active,,cat_carrier_required,,false,2026-02-04,,,,2025-06-01
 pat_031,cli_023,Rosie,dog,Australian Shepherd,male,false,2021-11-04,31.8,,9851000000031,deceased,2026-09-03,,,false,2026-07-13,,,,2025-06-01
-pat_032,cli_024,Milo,dog,Labrador Retriever,male,false,2026-07-17,29.9,,,active,,,,false,2025-11-10,,,,2025-06-01
-pat_033,cli_025,Jasper,cat,Domestic Shorthair,female,false,2026-07-17,3.9,,9851000000033,active,,cat_carrier_required,,false,2025-11-13,2025-11-02,,,2025-06-01
-pat_034,cli_025,Jack,dog,Corgi,female,false,2025-11-03,29.4,,9851000000034,active,,,,false,2025-10-24,,,,2025-06-01
+pat_032,cli_024,Milo,dog,Labrador Retriever,male,false,2022-10-16,29.9,,,active,,,,false,2025-11-10,,,,2025-06-01
+pat_033,cli_025,Jasper,cat,Domestic Shorthair,female,false,2022-10-16,3.9,,9851000000033,active,,cat_carrier_required,,false,2025-11-13,2025-11-02,,,2025-06-01
+pat_034,cli_025,Jack,dog,Corgi,female,false,2022-09-21,29.4,,9851000000034,active,,,,false,2025-10-24,,,,2025-06-01
 pat_035,cli_026,Sadie,dog,Poodle (Miniature),male,true,2018-11-05,15.3,,9851000000035,active,,,,false,2025-10-24,,,,2025-06-01
 pat_036,cli_027,Oliver,cat,Siamese,male,true,2018-11-05,4.8,,,active,,cat_carrier_required,,true,2025-09-10,,,,2025-06-01
 pat_037,cli_028,Duke,dog,Husky,female,true,2018-11-05,29.8,,9851000000037,active,,,,false,2025-09-22,,,,2025-06-01
@@ -40,18 +40,18 @@ pat_038,cli_028,Ruby,dog,Golden Retriever,male,false,2021-11-04,21.3,,9851000000
 pat_039,cli_029,Pumpkin,cat,Siamese,female,true,2017-11-05,5.0,,9851000000039,active,,cat_carrier_required,,false,2025-07-25,,,,2025-06-01
 pat_040,cli_030,Penny,dog,German Shepherd,female,true,2021-11-04,35.1,,,transferred,,,,false,2026-08-26,,,,2025-06-01
 pat_041,cli_031,Penny,dog,Labrador Retriever,female,true,2018-11-05,27.9,,9851000000041,active,,,,false,2026-05-19,,,,2025-06-01
-pat_042,cli_031,Chloe,cat,Domestic Longhair,female,true,2025-11-03,4.2,,9851000000042,active,,cat_carrier_required,,false,2025-11-05,,,,2025-06-01
-pat_043,cli_032,Gus,dog,Boxer,male,true,2024-11-03,21.8,,9851000000043,active,,,,false,2025-11-29,,,,2025-06-01
+pat_042,cli_031,Chloe,cat,Domestic Longhair,female,true,2022-11-12,4.2,,9851000000042,active,,cat_carrier_required,,false,2025-11-05,,,,2025-06-01
+pat_043,cli_032,Gus,dog,Boxer,male,true,2022-09-21,21.8,,9851000000043,active,,,,false,2025-11-29,,,,2025-06-01
 pat_044,cli_033,Zoey,dog,Beagle,female,false,2019-11-05,20.7,,,active,,,,false,2025-10-15,2025-11-24,,,2025-06-01
-pat_045,cli_034,Pepper,cat,Domestic Shorthair,female,false,2026-07-17,4.8,,9851000000045,active,,cat_carrier_required,,true,2025-10-11,,,,2025-06-01
+pat_045,cli_034,Pepper,cat,Domestic Shorthair,female,false,2022-10-16,4.8,,9851000000045,active,,cat_carrier_required,,true,2025-10-11,,,,2025-06-01
 pat_046,cli_034,Sadie,dog,Australian Shepherd,female,true,2020-11-04,9.9,,9851000000046,active,,,,false,2025-09-20,,,,2025-06-01
 pat_047,cli_034,Finn,dog,Mixed,male,false,2021-11-04,5.7,,9851000000047,active,,,,false,2025-09-29,,,,2025-06-01
 pat_048,cli_036,Mittens,cat,Siamese,male,true,2013-11-06,5.9,,,active,,cat_carrier_required,,false,2025-06-27,,,,2025-06-01
-pat_049,cli_037,Finn,dog,Mixed,male,true,2025-11-03,28.5,,9851000000049,active,,,,false,2025-06-27,,,,2025-06-01
-pat_050,cli_037,Buddy,dog,Boxer,female,false,2026-07-17,30.2,,9851000000050,active,,,,false,2026-07-23,,,,2025-06-01
+pat_049,cli_037,Finn,dog,Mixed,male,true,2022-11-26,28.5,,9851000000049,active,,,,false,2025-06-27,,,,2025-06-01
+pat_050,cli_037,Buddy,dog,Boxer,female,false,2022-11-26,30.2,,9851000000050,active,,,,false,2026-07-23,,,,2025-06-01
 pat_051,cli_038,Nova,cat,Domestic Longhair,female,true,2017-11-05,4.3,,9851000000051,active,,cat_carrier_required,,false,2026-07-14,,,,2025-06-01
-pat_052,cli_039,Zoey,dog,Shih Tzu,female,true,2024-11-03,20.5,,,active,,,,false,2025-11-15,,,,2025-06-01
-pat_053,cli_040,Hazel,dog,Golden Retriever,female,true,2024-11-03,10.2,,9851000000053,active,,,,false,2025-12-01,,,,2025-06-01
+pat_052,cli_039,Zoey,dog,Shih Tzu,female,true,2023-01-04,20.5,,,active,,,,false,2025-11-15,,,,2025-06-01
+pat_053,cli_040,Hazel,dog,Golden Retriever,female,true,2022-11-26,10.2,,9851000000053,active,,,,false,2025-12-01,,,,2025-06-01
 pat_054,cli_040,Oliver,cat,Siamese,male,false,2023-11-04,3.7,,9851000000054,active,,cat_carrier_required,,true,2025-10-24,,,,2025-06-01
 pat_055,cli_041,Finn,dog,Labrador Retriever,male,true,2022-11-04,27.6,,9851000000055,active,,,,false,2025-10-11,2025-11-03,,,2025-06-01
 pat_056,cli_042,Rosie,dog,Mixed,male,false,2017-11-05,4.6,,,active,,,,false,2025-09-16,,,,2025-06-01
@@ -59,7 +59,7 @@ pat_057,cli_043,Ginger,cat,Siamese,male,true,2016-11-05,6.0,,9851000000057,activ
 pat_058,cli_043,Jack,dog,Australian Shepherd,female,false,2019-11-05,26.8,,9851000000058,active,,,,false,2025-08-23,,,,2025-06-01
 pat_059,cli_044,Jack,dog,Australian Shepherd,male,false,2014-11-06,6.0,,9851000000059,active,,,,false,2025-07-14,,,,2025-06-01
 pat_060,cli_045,Mochi,cat,Domestic Shorthair,female,true,2022-11-04,5.8,,,active,,cat_carrier_required,,false,2026-05-22,,,,2025-06-01
-pat_061,cli_046,Buddy,dog,Mixed,female,false,2026-05-05,34.3,,9851000000061,active,,,,false,2026-01-15,,,,2025-06-01
+pat_061,cli_046,Buddy,dog,Mixed,female,false,2022-09-21,34.3,,9851000000061,active,,,,false,2026-01-15,,,,2025-06-01
 pat_062,cli_046,Finn,dog,Mixed,male,false,2020-11-04,30.3,,9851000000062,active,,,,false,2025-11-27,,,,2025-06-01
 pat_063,cli_047,Leo,cat,Domestic Shorthair,female,true,2013-11-06,4.7,,9851000000063,active,,cat_carrier_required,,true,2025-11-17,,,,2025-06-01
 pat_064,cli_048,Lola,dog,Husky,female,true,2022-11-04,35.4,,,active,,,,false,2025-10-07,,,,2025-06-01

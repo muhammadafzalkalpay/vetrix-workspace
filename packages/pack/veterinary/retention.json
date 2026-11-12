@@ -475,12 +475,15 @@
     "noshow_call": "Hi {{client_first_name}}, this is {{ai_name}} from {{clinic_name}}. We missed {{pet_name}} yesterday. I can rebook for {{slot_1}} or {{slot_2}}.",
     "noshow_final": "{{clinic_name}}: Whenever you're ready to rebook {{pet_name}}, here's the link: {{booking_link}}",
     "deceased_reply": "I am so sorry for your loss. I will make sure you do not receive any more reminders for {{pet_name}}.",
-    "fasting_check_evening": "{{clinic_name}}: {{pet_name}} has a procedure tomorrow. No food after midnight. Water is fine. Reply YES to confirm."
+    "fasting_check_evening": "{{clinic_name}}: {{pet_name}} has a procedure tomorrow. No food after midnight. Water is fine. Reply YES to confirm.",
+    "help_reply": "{{clinic_name}}: appointment and reminder texts. Call {{clinic_phone}} for help. Msg and data rates may apply. Reply STOP to opt out."
   },
   "inbound_reply_handling": {
     "C": "confirm_appointment",
     "R": "open_reschedule",
-    "STOP": "opt_out_marketing",
+    "STOP": "opt_out_all_sms",
+    "STOP_note": "Carriers and Twilio block every text after STOP. Confirmations for opted-out clients go by email, or by AI call if there is no email. Legal review before launch.",
+    "HELP": "send_help_reply",
     "REFILL": "create_refill_task",
     "deceased_phrases": [
       "passed away",
