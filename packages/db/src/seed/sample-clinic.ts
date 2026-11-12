@@ -3,6 +3,7 @@
 // recorded as an import job, with every source row in import_rows.
 //
 // Weekdays use 0 = Sunday ... 6 = Saturday (Postgres EXTRACT(DOW)).
+import { normalizePhone } from "@vetrix/domain";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { isTaskService, type Pack } from "@vetrix/pack";
@@ -217,7 +218,7 @@ export async function seedSampleClinic(client: SqlClient, pack: Pack, options: S
          sms_consent, sms_consent_at, sms_consent_source, marketing_consent, source, created_at)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) RETURNING id`,
       [
-        locationId, householdId, c.first_name, c.last_name, c.mobile, nullIfEmpty(c.email), nullIfEmpty(c.address),
+        locationId, householdId, c.first_name, c.last_name, normalizePhone(c.mobile!), nullIfEmpty(c.email), nullIfEmpty(c.address),
         c.preferred_channel, bool(c.sms_consent!), nullIfEmpty(c.sms_consent_at), nullIfEmpty(c.sms_consent_source),
         bool(c.marketing_consent!), c.source, c.created_at,
       ],

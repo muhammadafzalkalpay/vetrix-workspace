@@ -4,3 +4,4 @@
 export * from "./errors";
 export * from "./clock";
 export * from "./access";
+export * from "./clients";
