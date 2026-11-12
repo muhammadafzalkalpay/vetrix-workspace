@@ -6,7 +6,7 @@ Read `docs/HANDOFF.md` for the full planning history.
 
 ## Confirmed decisions
 - New repo, separate from Lumière. Port useful Lumière code module by module. Never change Lumière.
-- Stack: Next.js 15, TypeScript, Tailwind, shadcn/ui, Neon Postgres, Twilio (voice, SMS, recordings in V1), SendGrid (email), OpenAI Realtime, Better Auth. Hosted on GCP Cloud Run (`web` and `voice` services), Cloud Scheduler for the every-minute job dispatcher, Secret Manager for secrets.
+- Stack: Next.js 15, TypeScript, Tailwind, shadcn/ui, Neon Postgres, Twilio (voice, SMS, recordings in V1), SendGrid (email), Azure OpenAI (Realtime for calls), Better Auth. Hosted on GCP Cloud Run (`web` and `voice` services), Cloud Scheduler for the every-minute job dispatcher, Secret Manager for secrets.
 - One database per organization, with its locations inside it. A shared registry database routes each organization to its database.
 - `vertical_id` belongs to the location. Veterinary rules come from the versioned pack in `packages/pack/veterinary` (v0.2). Pack v0.2 is the approved baseline (12 Nov 2026); it replaces the v0.1 docs where they disagree.
 - This is a production application. Do not use the word "demo" in code, screens, config or docs. Use "sandbox" for simulated messaging and "sample clinic" for seeded data.

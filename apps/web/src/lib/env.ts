@@ -32,7 +32,17 @@ export const envSchema = z
     TWILIO_ACCOUNT_SID: optional,
     TWILIO_AUTH_TOKEN: optional,
     SENDGRID_API_KEY: optional,
-    OPENAI_API_KEY: optional,
+    // Azure OpenAI. Each model is a "deployment" you create in Azure AI Foundry;
+    // the code refers to the deployment name, not the model name.
+    AZURE_OPENAI_ENDPOINT: z
+      .string()
+      .url()
+      .refine((v) => v.startsWith("https://"), "Must be the https:// endpoint from the Azure portal")
+      .optional()
+      .or(z.literal("").transform(() => undefined)),
+    AZURE_OPENAI_API_KEY: optional,
+    AZURE_OPENAI_REALTIME_DEPLOYMENT: optional,
+    AZURE_OPENAI_TEXT_DEPLOYMENT: optional,
     SENTRY_DSN: optional,
   })
   .superRefine((env, ctx) => {
@@ -43,9 +53,25 @@ export const envSchema = z
         message: 'Required in production: "sandbox" or "live"',
       });
     }
+    // The Azure endpoint and key only work as a pair.
+    if (Boolean(env.AZURE_OPENAI_ENDPOINT) !== Boolean(env.AZURE_OPENAI_API_KEY)) {
+      const missing = env.AZURE_OPENAI_ENDPOINT ? "AZURE_OPENAI_API_KEY" : "AZURE_OPENAI_ENDPOINT";
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: [missing],
+        message: "Set AZURE_OPENAI_ENDPOINT and AZURE_OPENAI_API_KEY together",
+      });
+    }
     if (env.MESSAGING_MODE !== "live") return;
-    // Live mode must be able to send, otherwise messages would fail silently.
-    for (const key of ["TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN", "SENDGRID_API_KEY"] as const) {
+    // Live mode must be able to send and answer calls, otherwise they would fail silently.
+    for (const key of [
+      "TWILIO_ACCOUNT_SID",
+      "TWILIO_AUTH_TOKEN",
+      "SENDGRID_API_KEY",
+      "AZURE_OPENAI_ENDPOINT",
+      "AZURE_OPENAI_API_KEY",
+      "AZURE_OPENAI_REALTIME_DEPLOYMENT",
+    ] as const) {
       if (!env[key]) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,

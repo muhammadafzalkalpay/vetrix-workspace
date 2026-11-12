@@ -20,6 +20,14 @@ describe("environment config", () => {
     );
   });
 
+  it("requires Azure OpenAI in live mode and the endpoint and key as a pair", () => {
+    expect(() => parseEnv({ ...base, MESSAGING_MODE: "live" })).toThrow(/AZURE_OPENAI_REALTIME_DEPLOYMENT/);
+    expect(() => parseEnv({ ...base, AZURE_OPENAI_API_KEY: "k" })).toThrow(/AZURE_OPENAI_ENDPOINT/);
+    expect(() => parseEnv({ ...base, AZURE_OPENAI_ENDPOINT: "http://x.openai.azure.com", AZURE_OPENAI_API_KEY: "k" })).toThrow(/https/);
+    const env = parseEnv({ ...base, AZURE_OPENAI_ENDPOINT: "https://x.openai.azure.com", AZURE_OPENAI_API_KEY: "k" });
+    expect(env.AZURE_OPENAI_ENDPOINT).toBe("https://x.openai.azure.com");
+  });
+
   it("treats anything but an explicit live as sandbox for labels", () => {
     expect(getMessagingMode({})).toBe("sandbox");
     expect(getMessagingMode({ MESSAGING_MODE: "LIVE" })).toBe("sandbox");

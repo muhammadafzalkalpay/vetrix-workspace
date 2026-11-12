@@ -3,11 +3,16 @@
 //   pnpm db:migrate --adopt-existing      adopt a hand-built schema after verifying it matches
 //   pnpm db:tenant:add --name "Sample Clinic" --slug sample-clinic --ref env:CLINIC_DATABASE_URL_DEV
 //   pnpm db:status                        table counts and applied migrations
+//   pnpm db:packs:publish                 publish the bundled veterinary pack to the registry
+//   pnpm db:seed:sample --org <slug> [--replace]   sample clinic data (non-production only)
 // Output never includes passwords: only host and database names.
 import { parseArgs } from "node:util";
 import { Pool } from "@neondatabase/serverless";
 import { assertPostgresUrl, describeUrl, neonRegionFromUrl, resolveDatabaseRef } from "./database-ref";
 import { appliedMigrations, loadMigrations, migrateDatabase, MigrationError, publicTables, type MigrationTarget } from "./migrations";
+import { getVeterinaryPack, veterinaryRawPack } from "@vetrix/pack";
+import { publishPack } from "./packs";
+import { seedSampleClinic } from "./seed/sample-clinic";
 import { listTenantDatabases, recordTenantMigrations, registerTenant, setTenantStatus, type TenantDatabase } from "./tenants";
 
 const EXPECTED_TABLES: Record<MigrationTarget, number> = { registry: 8, clinic: 57 };
@@ -143,6 +148,59 @@ async function status(): Promise<void> {
   }
 }
 
+async function packsPublish(): Promise<void> {
+  await withClient(registryUrl(), async (registry) => {
+    const result = await publishPack(registry, veterinaryRawPack);
+    console.log(
+      `✓ veterinary pack ${result.version} ${result.created ? "published" : "already published, content unchanged"}`,
+    );
+  });
+}
+
+async function seedSample(argv: string[]): Promise<void> {
+  const { values } = parseArgs({
+    args: argv,
+    options: { org: { type: "string" }, replace: { type: "boolean", default: false } },
+  });
+  if (!values.org) throw new Error("Usage: pnpm db:seed:sample --org <organization-slug> [--replace]");
+  await withClient(registryUrl(), async (registry) => {
+    const tenant = (await listTenantDatabases(registry)).find((t) => t.organization_slug === values.org);
+    if (!tenant) throw new Error(`Organization "${values.org}" is not registered`);
+    // Production clinic databases use secret refs, never env: refs.
+    if (!tenant.database_ref.startsWith("env:")) {
+      throw new Error(`Refusing to load sample data into ${values.org}: it is not a development database`);
+    }
+    const published = await publishPack(registry, veterinaryRawPack);
+    const pack = getVeterinaryPack();
+    const url = resolveDatabaseRef(tenant.database_ref);
+
+    const summary = await withClient(url, async (clinic) => {
+      await clinic.query("BEGIN");
+      try {
+        const { rows } = await clinic.query<{ n: number }>(`SELECT count(*)::int AS n FROM locations`);
+        if ((rows[0]?.n ?? 0) > 0) {
+          if (!values.replace) {
+            throw new Error(`${values.org} already has data. Use --replace to delete it and load the sample clinic again.`);
+          }
+          const tables = await publicTables(clinic);
+          await clinic.query(`TRUNCATE ${tables.map((t) => `public."${t}"`).join(", ")} CASCADE`);
+        }
+        const result = await seedSampleClinic(clinic, pack, { configPackId: published.configPackId });
+        await clinic.query("COMMIT");
+        return result;
+      } catch (error) {
+        await clinic.query("ROLLBACK").catch(() => undefined);
+        throw error;
+      }
+    });
+    console.log(
+      `✓ sample clinic loaded into ${values.org} (${describeUrl(url)}): ${summary.clients} clients, ` +
+        `${summary.patients} patients, ${summary.appointments} past visits, ${summary.vaccineRecords} vaccine records`,
+    );
+    for (const w of summary.warnings) console.log(`  ! ${w}`);
+  });
+}
+
 const [command, ...args] = process.argv.slice(2);
 // pnpm forwards the "--" separator; drop it so flags parse normally.
 const rest = args.filter((arg) => arg !== "--");
@@ -150,11 +208,13 @@ const commands: Record<string, () => Promise<void>> = {
   migrate: () => migrate(rest),
   "tenant:add": () => addTenant(rest),
   status,
+  "packs:publish": packsPublish,
+  "seed:sample": () => seedSample(rest),
 };
 
 const run = command ? commands[command] : undefined;
 if (!run) {
-  console.error(`Unknown command "${command ?? ""}". Use: migrate, tenant:add, status`);
+  console.error(`Unknown command "${command ?? ""}". Use: migrate, tenant:add, status, packs:publish, seed:sample`);
   process.exit(1);
 }
 run().catch((error: unknown) => {
