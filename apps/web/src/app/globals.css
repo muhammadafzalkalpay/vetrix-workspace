@@ -1,49 +1,78 @@
 @import "tailwindcss";
 
-/* Brand tokens from packages/pack/veterinary/brand.json, mapped to shadcn/ui variables. */
+/* Colour tokens: navy + teal (chosen 12 Nov 2026), mapped to shadcn/ui variables.
+   Text-safe variants (*-text) meet 4.5:1 on white; use them for words, and the
+   base colours for fills. Input borders meet 3:1 so fields are visible. */
 :root {
-  --background: #f6f9f9;
-  --foreground: #1f2933;
+  --background: #f8fafc;
+  --foreground: #0b1b2b;
   --card: #ffffff;
-  --card-foreground: #1f2933;
+  --card-foreground: #0b1b2b;
   --popover: #ffffff;
-  --popover-foreground: #1f2933;
-  --primary: #0e7c7b;
+  --popover-foreground: #0b1b2b;
+  --primary: #0f766e;
   --primary-foreground: #ffffff;
-  --secondary: #dcf1f0;
-  --secondary-foreground: #0b5f5e;
-  --muted: #eef3f3;
-  --muted-foreground: #52606d;
-  --accent: #f4a259;
-  --accent-foreground: #1f2933;
-  --destructive: #c6373c;
-  --border: #e4e7eb;
-  --input: #e4e7eb;
-  --ring: #0e7c7b;
-  --success: #2e8b57;
-  --warning: #d99a00;
-  --info: #2f6db5;
+  --primary-dark: #115e59;
+  --secondary: #f0fdfa;
+  --secondary-foreground: #115e59;
+  --muted: #f1f5f9;
+  --muted-foreground: #475569;
+  --accent: #2dd4bf;
+  --accent-foreground: #042f2e;
+  --accent-text: #0f766e;
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+  --border: #e2e8f0;
+  --input: #7c8ba1;
+  --ring: #0f766e;
+  --success: #16a34a;
+  --success-text: #15803d;
+  --success-soft: #dcfce7;
+  --warning: #f59e0b;
+  --warning-text: #b45309;
+  --warning-soft: #fef3c7;
+  --danger-soft: #fee2e2;
+  --info: #2563eb;
+  --info-soft: #dbeafe;
   --radius: 10px;
+  --card-shadow: 0 1px 2px rgba(11, 27, 43, 0.06);
+  /* Brand surfaces: the navy used for dark panels, and one warm highlight
+     for headline underlines (not for status; amber status uses --warning). */
+  --navy-950: #061325;
+  --navy-900: #0b1b2b;
+  --navy-800: #0a2440;
+  --navy-700: #0c3a4b;
+  --highlight: #fbbf24;
 }
 
 .dark {
-  --background: #0f1a1a;
-  --foreground: #e8f0f0;
-  --card: #15302f;
-  --card-foreground: #e8f0f0;
-  --popover: #15302f;
-  --popover-foreground: #e8f0f0;
-  --primary: #3baaa8;
-  --primary-foreground: #0f1a1a;
-  --secondary: #1c3a39;
-  --secondary-foreground: #e8f0f0;
-  --muted: #1c3a39;
-  --muted-foreground: #9fb3b2;
-  --accent: #f4a259;
-  --accent-foreground: #0f1a1a;
-  --border: #244443;
-  --input: #244443;
-  --ring: #3baaa8;
+  --background: #07111f;
+  --foreground: #e2e8f0;
+  --card: #0d1b2e;
+  --card-foreground: #e2e8f0;
+  --popover: #0d1b2e;
+  --popover-foreground: #e2e8f0;
+  --primary: #2dd4bf;
+  --primary-foreground: #042f2e;
+  --primary-dark: #5eead4;
+  --secondary: #0f2e3a;
+  --secondary-foreground: #ccfbf1;
+  --muted: #132338;
+  --muted-foreground: #94a3b8;
+  --accent: #2dd4bf;
+  --accent-foreground: #042f2e;
+  --accent-text: #5eead4;
+  --destructive: #f87171;
+  --destructive-foreground: #07111f;
+  --border: #1c2e45;
+  --input: #4b5e78;
+  --ring: #2dd4bf;
+  --success-text: #4ade80;
+  --success-soft: #052e16;
+  --warning-text: #fbbf24;
+  --warning-soft: #3a2a05;
+  --danger-soft: #3b0d0d;
+  --info-soft: #0c1f45;
 }
 
 @theme inline {
@@ -55,24 +84,57 @@
   --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
+  --color-primary-dark: var(--primary-dark);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
+  --color-accent-text: var(--accent-text);
   --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success-text: var(--success-text);
+  --color-success-soft: var(--success-soft);
+  --color-warning-text: var(--warning-text);
+  --color-warning-soft: var(--warning-soft);
+  --color-danger-soft: var(--danger-soft);
+  --color-info-soft: var(--info-soft);
+  --color-navy-950: var(--navy-950);
+  --color-navy-900: var(--navy-900);
+  --color-navy-800: var(--navy-800);
+  --color-navy-700: var(--navy-700);
+  --color-highlight: var(--highlight);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
   --color-success: var(--success);
   --color-warning: var(--warning);
   --color-info: var(--info);
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
+  /* Radii 10 / 8 / 6 */
+  --radius-sm: 6px;
+  --radius-md: 8px;
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
-  --font-sans: var(--font-inter), system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --shadow-card: var(--card-shadow);
+  /* Type scale: 28 / 22 / 18 / 15 / 13 / 12, plus a display size for the
+     sign-in and marketing pages only. */
+  --text-display: 48px;
+  --text-display--line-height: 56px;
+  --text-display--letter-spacing: -0.02em;
+  --text-h1: 28px;
+  --text-h1--line-height: 36px;
+  --text-h2: 22px;
+  --text-h2--line-height: 30px;
+  --text-h3: 18px;
+  --text-h3--line-height: 26px;
+  --text-body: 15px;
+  --text-body--line-height: 22px;
+  --text-small: 13px;
+  --text-small--line-height: 18px;
+  --text-caption: 12px;
+  --text-caption--line-height: 16px;
+  --font-sans: var(--font-poppins), system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 
 @layer base {
@@ -80,7 +142,119 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
-    font-size: 15px;
+    @apply bg-background text-foreground text-body;
+  }
+  h1,
+  h2,
+  h3 {
+    @apply font-semibold tracking-tight;
+  }
+  /* Respect people who turn off animation. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
   }
 }
+
+/* ---------- Motion ----------
+   Entrance animations start hidden and end visible (fill-mode both), so with
+   reduced motion they simply appear. Delays are set inline per element. */
+@keyframes vx-fade-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes vx-slide-in {
+  from { opacity: 0; transform: translateX(24px) scale(0.97); }
+  to { opacity: 1; transform: translateX(0) scale(1); }
+}
+@keyframes vx-pop {
+  0% { opacity: 0; transform: scale(0.6); }
+  70% { opacity: 1; transform: scale(1.08); }
+  100% { opacity: 1; transform: scale(1); }
+}
+@keyframes vx-draw {
+  from { stroke-dashoffset: 1; }
+  to { stroke-dashoffset: 0; }
+}
+@keyframes vx-float {
+  0%, 100% { translate: 0 0; }
+  50% { translate: 0 -6px; }
+}
+@keyframes vx-ring {
+  0% { transform: scale(1); opacity: 0.55; }
+  100% { transform: scale(1.9); opacity: 0; }
+}
+@keyframes vx-wave {
+  0%, 100% { transform: scaleY(0.35); }
+  50% { transform: scaleY(1); }
+}
+@keyframes vx-blob {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(40px, -30px) scale(1.08); }
+  66% { transform: translate(-30px, 20px) scale(0.95); }
+}
+@keyframes vx-typing {
+  0%, 60%, 100% { opacity: 0.25; transform: translateY(0); }
+  30% { opacity: 1; transform: translateY(-3px); }
+}
+@keyframes vx-fade-out {
+  to { opacity: 0; height: 0; margin: 0; }
+}
+@keyframes vx-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+.vx-fade-up { animation: vx-fade-up 0.7s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.vx-slide-in { animation: vx-slide-in 0.8s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.vx-pop { animation: vx-pop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+.vx-draw { stroke-dasharray: 1; animation: vx-draw 0.9s ease-out both; }
+.vx-float { animation: vx-float 6s ease-in-out infinite; }
+.vx-ring { animation: vx-ring 1.8s ease-out infinite; }
+.vx-wave { transform-origin: center; animation: vx-wave 1.1s ease-in-out infinite; }
+.vx-blob { animation: vx-blob 18s ease-in-out infinite; }
+.vx-typing { animation: vx-typing 1.2s ease-in-out infinite; }
+.vx-blink { animation: vx-blink 1.4s ease-in-out infinite; }
+
+/* Pets: wagging tail and blinking eyes. */
+@keyframes vx-wag {
+  0%, 100% { transform: rotate(-6deg); }
+  50% { transform: rotate(12deg); }
+}
+@keyframes vx-blink-eyes {
+  0%, 92%, 100% { transform: scaleY(1); }
+  95% { transform: scaleY(0.1); }
+}
+.vx-wag { transform-box: fill-box; transform-origin: 0% 100%; animation: vx-wag 0.9s ease-in-out infinite; }
+.vx-blink-eyes { transform-box: fill-box; transform-origin: center; animation: vx-blink-eyes 4.5s ease-in-out infinite; }
+
+/* Booking scene: options become selected, the button is pressed, the
+   confirmation slides up. All end in their final state (fill both). */
+@keyframes vx-select {
+  from { background-color: var(--muted); color: var(--foreground); }
+  to { background-color: var(--primary); color: var(--primary-foreground); }
+}
+@keyframes vx-press {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(0.94); filter: brightness(1.15); }
+}
+@keyframes vx-slide-up {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.vx-select { animation: vx-select 0.35s ease-out both; }
+.vx-press { animation: vx-press 0.35s ease-in-out both; }
+.vx-slide-up { animation: vx-slide-up 0.6s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+/* Background waves drifting sideways. */
+@keyframes vx-drift {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+.vx-drift { animation: vx-drift 24s linear infinite; }
+.vx-drift-slow { animation: vx-drift 38s linear infinite; }

@@ -1,5 +1,8 @@
 # Veterinary pack changelog
 
+## 0.2.3 (12 Nov 2026)
+- `brand.json`: colour scheme is now navy + teal (primary #0F766E, navy ink #0B1B2B, mint accent #2DD4BF, warm highlight #FBBF24 for headline underlines only). Font is Poppins. Dark mode and type scale updated to match the app.
+
 ## 0.2.2 (12 Nov 2026)
 - `brand.json`: landing page button reads "Book a 20-minute walkthrough".
 

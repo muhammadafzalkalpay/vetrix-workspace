@@ -11,6 +11,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@hookform/resolvers": "5.9.2",
+    "@radix-ui/react-label": "2.1.17",
     "@radix-ui/react-slot": "^1.5.0",
     "@vetrix/db": "workspace:*",
     "@vetrix/domain": "workspace:*",
@@ -21,7 +23,9 @@
     "next": "15.5.29",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
+    "react-hook-form": "7.91.0",
     "server-only": "0.0.1",
+    "sonner": "2.0.8",
     "tailwind-merge": "^3.7.0",
     "zod": "^4.6.7"
   },

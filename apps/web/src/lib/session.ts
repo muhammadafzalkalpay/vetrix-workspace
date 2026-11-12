@@ -3,12 +3,18 @@
 //   requirePermission(ctx.access, "schedule.manage", locationId);
 import "server-only";
 import { cache } from "react";
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { loadStaffAccess, membershipsFor } from "@vetrix/db/runtime";
 import { auth } from "./auth";
 import { resolveStaffContext, type StaffContext, type StaffContextResult } from "./staff-context";
 import { tenancy } from "./tenancy";
+
+/**
+ * Organization chosen by people who belong to several. Only a hint: it is
+ * checked against their memberships on every request.
+ */
+export const ACTIVE_ORG_COOKIE = "vetrix.org";
 
 /** The Better Auth session for this request, or null. Cached per request. */
 export const getSession = cache(async () => auth().api.getSession({ headers: await headers() }));
@@ -23,7 +29,7 @@ export const getStaffContext = cache(async (): Promise<StaffContextResult | null
       clinicFor: async (organizationId) => (await t.clinicPool(organizationId)).pool,
       loadAccess: loadStaffAccess,
     },
-    { userId: session.user.id, activeOrganizationId: session.session.activeOrganizationId },
+    { userId: session.user.id, activeOrganizationId: (await cookies()).get(ACTIVE_ORG_COOKIE)?.value },
   );
 });
 

@@ -37,9 +37,9 @@ function issuesOf(raw: RawPack): string[] {
 describe("veterinary pack", () => {
   const pack = getVeterinaryPack();
 
-  it("loads and validates v0.2.2", () => {
+  it("loads and validates v0.2.3", () => {
     expect(pack.manifest.vertical_id).toBe("veterinary");
-    expect(pack.manifest.pack_version).toBe("0.2.2");
+    expect(pack.manifest.pack_version).toBe("0.2.3");
     expect(pack.services.services.length).toBe(33);
   });
 

@@ -50,14 +50,6 @@ function createAuth() {
         createdAt: "created_at",
         updatedAt: "updated_at",
       },
-      additionalFields: {
-        activeOrganizationId: {
-          type: "string",
-          fieldName: "active_organization_id",
-          required: false,
-          input: false,
-        },
-      },
       expiresIn: 7 * DAY, // signed out after a week without use
       updateAge: DAY, // each day of use extends it
       // Signed cookie copy of the session, checked against the database at
