@@ -9,3 +9,4 @@ export * from "./members";
 export * from "./overview";
 export * from "./clients";
 export * from "./importer";
+export * from "./booking";
