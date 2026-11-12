@@ -1,7 +1,7 @@
 // Registry operations for clinic databases: register one, list them, and
 // mirror each database's migration state into tenant_migrations so the
 // platform can see every clinic's schema version in one place.
-import type { SqlClient } from "./migrations";
+import type { SqlClient } from "./sql-client";
 
 export interface TenantDatabase {
   id: string;

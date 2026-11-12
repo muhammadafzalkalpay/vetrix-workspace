@@ -2,7 +2,11 @@ import { describe, expect, it } from "vitest";
 import { getMessagingMode, parseEnv } from "./env";
 import { createLogger } from "./logger";
 
-const base = { REGISTRY_DATABASE_URL: "postgres://u:p@host/db" };
+const base = {
+  REGISTRY_DATABASE_URL: "postgres://u:p@host/db",
+  BETTER_AUTH_SECRET: "x".repeat(32),
+};
+const prodEmail = { SENDGRID_API_KEY: "sg", EMAIL_FROM: "desk@example.com" };
 
 describe("environment config", () => {
   it("defaults to sandbox outside production", () => {
@@ -10,8 +14,17 @@ describe("environment config", () => {
   });
 
   it("requires an explicit messaging mode in production", () => {
-    expect(() => parseEnv({ ...base, NODE_ENV: "production" })).toThrow(/MESSAGING_MODE/);
-    expect(parseEnv({ ...base, NODE_ENV: "production", MESSAGING_MODE: "sandbox" }).MESSAGING_MODE).toBe("sandbox");
+    expect(() => parseEnv({ ...base, ...prodEmail, NODE_ENV: "production" })).toThrow(/MESSAGING_MODE/);
+    expect(parseEnv({ ...base, ...prodEmail, NODE_ENV: "production", MESSAGING_MODE: "sandbox" }).MESSAGING_MODE).toBe(
+      "sandbox",
+    );
+  });
+
+  it("requires a long session secret and, in production, a working email sender", () => {
+    expect(() => parseEnv({ ...base, BETTER_AUTH_SECRET: "short" })).toThrow(/BETTER_AUTH_SECRET/);
+    expect(() => parseEnv({ ...base, NODE_ENV: "production", MESSAGING_MODE: "sandbox" })).toThrow(
+      /SENDGRID_API_KEY[\s\S]*EMAIL_FROM/,
+    );
   });
 
   it("requires sending credentials in live mode", () => {

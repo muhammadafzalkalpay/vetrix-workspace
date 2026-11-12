@@ -21,10 +21,8 @@ export interface Migration {
   checksum: string;
 }
 
-/** Minimal client shape, satisfied by pg and @neondatabase/serverless clients. */
-export interface SqlClient {
-  query<R = Record<string, unknown>>(text: string, params?: unknown[]): Promise<{ rows: R[] }>;
-}
+import type { SqlClient } from "./sql-client";
+export type { SqlClient } from "./sql-client";
 
 export const MIGRATIONS_ROOT = fileURLToPath(new URL("../../../db/migrations", import.meta.url));
 

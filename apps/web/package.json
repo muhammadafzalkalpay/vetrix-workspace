@@ -12,14 +12,18 @@
   },
   "dependencies": {
     "@radix-ui/react-slot": "^1.5.0",
+    "@vetrix/db": "workspace:*",
+    "@vetrix/domain": "workspace:*",
+    "better-auth": "1.7.14",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^1.72.0",
     "next": "15.5.29",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
+    "server-only": "0.0.1",
     "tailwind-merge": "^3.7.0",
-    "zod": "^3.25.76"
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.7",

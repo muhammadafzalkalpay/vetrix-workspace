@@ -5,6 +5,7 @@
 //   pnpm db:status                        table counts and applied migrations
 //   pnpm db:packs:publish                 publish the bundled veterinary pack to the registry
 //   pnpm db:seed:sample --org <slug> [--replace]   sample clinic data (non-production only)
+//   pnpm db:staff:add --org <slug> --email a@b.com --name "Jo Smith" --role owner [--location <id>]
 // Output never includes passwords: only host and database names.
 import { parseArgs } from "node:util";
 import { Pool } from "@neondatabase/serverless";
@@ -13,9 +14,12 @@ import { appliedMigrations, loadMigrations, migrateDatabase, MigrationError, pub
 import { getVeterinaryPack, veterinaryRawPack } from "@vetrix/pack";
 import { publishPack } from "./packs";
 import { seedSampleClinic } from "./seed/sample-clinic";
+import { syncRoleCatalogue, upsertStaffMember } from "./access";
+import { addOrganizationMember, ensurePlatformUser } from "./members";
+import { isRoleKey, ROLE_KEYS } from "@vetrix/domain";
 import { listTenantDatabases, recordTenantMigrations, registerTenant, setTenantStatus, type TenantDatabase } from "./tenants";
 
-const EXPECTED_TABLES: Record<MigrationTarget, number> = { registry: 8, clinic: 57 };
+const EXPECTED_TABLES: Record<MigrationTarget, number> = { registry: 12, clinic: 57 };
 
 function registryUrl(): string {
   const url = process.env.REGISTRY_DATABASE_URL;
@@ -58,7 +62,19 @@ async function migrateTenant(
   const files = loadMigrations("clinic");
   await setTenantStatus(registry, tenant.id, "migrating");
   try {
-    const result = await withClient(url, (c) => migrateDatabase(c, "clinic", files, { adoptExisting }));
+    const result = await withClient(url, async (c) => {
+      const migrated = await migrateDatabase(c, "clinic", files, { adoptExisting });
+      // Keep the default roles in step with the code on every migrate.
+      await c.query("BEGIN");
+      try {
+        await syncRoleCatalogue(c);
+        await c.query("COMMIT");
+      } catch (error) {
+        await c.query("ROLLBACK").catch(() => undefined);
+        throw error;
+      }
+      return migrated;
+    });
     await recordTenantMigrations(registry, tenant.id, {
       applied: [...result.adopted, ...result.applied],
       schemaVersion: files.at(-1)?.version ?? null,
@@ -186,6 +202,7 @@ async function seedSample(argv: string[]): Promise<void> {
           await clinic.query(`TRUNCATE ${tables.map((t) => `public."${t}"`).join(", ")} CASCADE`);
         }
         const result = await seedSampleClinic(clinic, pack, { configPackId: published.configPackId });
+        await syncRoleCatalogue(clinic);
         await clinic.query("COMMIT");
         return result;
       } catch (error) {
@@ -201,6 +218,52 @@ async function seedSample(argv: string[]): Promise<void> {
   });
 }
 
+async function staffAdd(argv: string[]): Promise<void> {
+  const { values } = parseArgs({
+    args: argv,
+    options: {
+      org: { type: "string" },
+      email: { type: "string" },
+      name: { type: "string" },
+      role: { type: "string" },
+      location: { type: "string", multiple: true },
+    },
+  });
+  const { org, email, name, role } = values;
+  if (!org || !email || !name || !role) {
+    throw new Error('Usage: pnpm db:staff:add --org <slug> --email a@b.com --name "Jo Smith" --role owner [--location <id>]');
+  }
+  if (!isRoleKey(role)) throw new Error(`role must be one of: ${ROLE_KEYS.join(", ")}`);
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw new Error("email does not look valid");
+
+  await withClient(registryUrl(), async (registry) => {
+    const tenant = (await listTenantDatabases(registry)).find((t) => t.organization_slug === org);
+    if (!tenant) throw new Error(`Organization "${org}" is not registered`);
+    const user = await ensurePlatformUser(registry, email, name);
+    await withClient(resolveDatabaseRef(tenant.database_ref), async (clinic) => {
+      await clinic.query("BEGIN");
+      try {
+        await syncRoleCatalogue(clinic);
+        await upsertStaffMember(clinic, {
+          platformUserId: user.id,
+          displayName: name,
+          role,
+          locationIds: values.location,
+        });
+        await clinic.query("COMMIT");
+      } catch (error) {
+        await clinic.query("ROLLBACK").catch(() => undefined);
+        throw error;
+      }
+    });
+    // Membership last: the person can only open the organization once their
+    // staff record exists.
+    await addOrganizationMember(registry, tenant.organization_id, user.id);
+    console.log(`✓ ${email} is ${role} at ${org}${values.location ? ` (${values.location.length} location(s))` : " (all locations)"}`);
+    console.log("  They set their password with \"Forgot password\" on the sign-in page.");
+  });
+}
+
 const [command, ...args] = process.argv.slice(2);
 // pnpm forwards the "--" separator; drop it so flags parse normally.
 const rest = args.filter((arg) => arg !== "--");
@@ -210,11 +273,12 @@ const commands: Record<string, () => Promise<void>> = {
   status,
   "packs:publish": packsPublish,
   "seed:sample": () => seedSample(rest),
+  "staff:add": () => staffAdd(rest),
 };
 
 const run = command ? commands[command] : undefined;
 if (!run) {
-  console.error(`Unknown command "${command ?? ""}". Use: migrate, tenant:add, status, packs:publish, seed:sample`);
+  console.error(`Unknown command "${command ?? ""}". Use: migrate, tenant:add, status, packs:publish, seed:sample, staff:add`);
   process.exit(1);
 }
 run().catch((error: unknown) => {

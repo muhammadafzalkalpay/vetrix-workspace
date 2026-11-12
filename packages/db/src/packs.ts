@@ -4,7 +4,7 @@
 // version keeps exactly the rules it was configured with.
 import { packFileChecksum } from "@vetrix/pack/checksum";
 import { validatePack, type RawPack } from "@vetrix/pack";
-import type { SqlClient } from "./migrations";
+import type { SqlClient } from "./sql-client";
 
 /** Verticals offered in the signup selector. Only veterinary is enabled today. */
 export const VERTICALS = [

@@ -3,3 +3,4 @@
 // Keep this package free of Next.js and database client code.
 export * from "./errors";
 export * from "./clock";
+export * from "./access";

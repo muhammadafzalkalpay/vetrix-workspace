@@ -5,3 +5,5 @@ export * from "./migrations";
 export * from "./tenants";
 export * from "./router";
 export * from "./packs";
+export * from "./access";
+export * from "./members";

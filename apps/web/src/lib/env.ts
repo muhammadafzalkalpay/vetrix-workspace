@@ -29,6 +29,12 @@ export const envSchema = z
     // found through the registry (tenant_databases.database_ref).
     REGISTRY_DATABASE_URL: z.string().url(),
 
+    // Signs session cookies. At least 32 random characters; generate with
+    // `openssl rand -base64 32`. Changing it signs everyone out.
+    BETTER_AUTH_SECRET: z.string().min(32, "Must be at least 32 characters"),
+    // Sender for sign-in emails (verification, password reset) and client email.
+    EMAIL_FROM: z.string().email().optional().or(z.literal("").transform(() => undefined)),
+
     TWILIO_ACCOUNT_SID: optional,
     TWILIO_AUTH_TOKEN: optional,
     SENDGRID_API_KEY: optional,
@@ -53,6 +59,16 @@ export const envSchema = z
         message: 'Required in production: "sandbox" or "live"',
       });
     }
+    // Sign-in emails (password reset, verification) are always delivered for
+    // real in production, whatever MESSAGING_MODE says: without them nobody
+    // could sign in. MESSAGING_MODE only governs messages to clinic clients.
+    if (env.NODE_ENV === "production") {
+      for (const key of ["SENDGRID_API_KEY", "EMAIL_FROM"] as const) {
+        if (!env[key]) {
+          ctx.addIssue({ code: "custom", path: [key], message: "Required in production for sign-in emails" });
+        }
+      }
+    }
     // The Azure endpoint and key only work as a pair.
     if (Boolean(env.AZURE_OPENAI_ENDPOINT) !== Boolean(env.AZURE_OPENAI_API_KEY)) {
       const missing = env.AZURE_OPENAI_ENDPOINT ? "AZURE_OPENAI_API_KEY" : "AZURE_OPENAI_ENDPOINT";
@@ -68,6 +84,7 @@ export const envSchema = z
       "TWILIO_ACCOUNT_SID",
       "TWILIO_AUTH_TOKEN",
       "SENDGRID_API_KEY",
+      "EMAIL_FROM",
       "AZURE_OPENAI_ENDPOINT",
       "AZURE_OPENAI_API_KEY",
       "AZURE_OPENAI_REALTIME_DEPLOYMENT",
