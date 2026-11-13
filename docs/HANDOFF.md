@@ -24,7 +24,7 @@ Summary of the planning conversation on claude.ai, 4 to 12 November 2026. Read t
 
 ## Architecture
 - Next.js on GCP Cloud Run for staff screens, APIs, webhooks and scheduled routes (decision of 12 Nov 2026, replacing Vercel). Cloud Scheduler calls the job dispatcher every minute.
-- `apps/voice`: separate Node service for live Twilio audio to Azure OpenAI Realtime, also on Cloud Run (connections up to 60 minutes). Built after the web app works end to end in sandbox mode, where calls are simulated.
+- `apps/voice`: separate Node service for live Twilio audio to the OpenAI Realtime API (OpenAI directly, not Azure; decided 13 Nov 2026), also on Cloud Run (connections up to 60 minutes). Built after the web app works end to end in sandbox mode, where calls are simulated.
 - Business rules in `packages/domain`, database access and tenant routing in `packages/db`, pack loading in `packages/pack`.
 - Appointments live in Postgres, not Google Calendar. Each held provider, room or equipment unit is a row in `appointment_resources`. Exclusion constraints block double-booking of exclusive resources. Shared-capacity rooms need a locked count check in the booking service.
 - The messaging gate re-checks pet status, do-not-contact, consent and quiet hours at send time for every outbound message.
