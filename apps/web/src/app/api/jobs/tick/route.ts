@@ -3,7 +3,7 @@
 // runs whatever is due (daily reminders, the 7 PM fasting check, the 8 PM
 // no-reply tasks). Each job claims its day first, so repeats are harmless.
 import { timingSafeEqual } from "node:crypto";
-import { aiPersonaName, listTenantDatabases, runDueJobs, withTransaction } from "@vetrix/db/runtime";
+import { aiPersonaName, listTenantDatabases, queuedMessages, runDueJobs, withTransaction } from "@vetrix/db/runtime";
 import { formatPhone } from "@vetrix/domain";
 import { getEnv, getMessagingMode } from "@/lib/env";
 import { logger } from "@/lib/logger";
@@ -47,8 +47,10 @@ export async function POST(request: Request) {
           const aiName = await aiPersonaName(pool, loc.id);
           const values = { clinicName: loc.name, aiName, clinicPhone: phone(loc.main_phone), bookingLink: "reply to this text" };
           const r = await withTransaction(pool, (tx) => runDueJobs(tx, { locationId: loc.id, now, sandbox, values }));
-          if (!sandbox && r.outbound.length) {
-            await deliverQueued({ clinic: pool, organizationId: tenant.organization_id, locationId: loc.id, clinicName: loc.name, messages: r.outbound });
+          // Live: send everything queued at this location (this run's messages,
+          // waitlist offers, replies saved by other paths).
+          if (!sandbox) {
+            await deliverQueued({ clinic: pool, organizationId: tenant.organization_id, locationId: loc.id, clinicName: loc.name, messages: await queuedMessages(pool, loc.id) });
           }
           report.push({ organization: tenant.organization_slug, location: loc.name, ran: r.ran });
         } catch (error) {

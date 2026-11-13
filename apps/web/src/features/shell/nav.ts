@@ -5,6 +5,7 @@ import {
   BellRing,
   CalendarDays,
   ClipboardList,
+  Hourglass,
   LayoutDashboard,
   MessageSquareText,
   PawPrint,
@@ -40,6 +41,7 @@ export const NAV: NavGroup[] = [
       { href: "/overview", label: "Overview", icon: LayoutDashboard, keywords: ["home", "dashboard", "today"] },
       { href: "/schedule", label: "Schedule", icon: CalendarDays, permission: "schedule.view", keywords: ["calendar", "appointments", "book"] },
       { href: "/tasks", label: "Tasks", icon: ClipboardList, permission: "tasks.view", keywords: ["to do", "follow up"] },
+      { href: "/waitlist", label: "Waitlist", icon: Hourglass, permission: "schedule.view", keywords: ["cancellation", "earlier", "wait"] },
     ],
   },
   {

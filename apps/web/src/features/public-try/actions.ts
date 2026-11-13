@@ -12,6 +12,7 @@ import { aiPersonaName, continueFrontDesk, endFrontDesk, searchClients, startFro
 import type { ConsoleResult } from "@/features/front-desk/actions";
 import type { QuickCaller } from "@/features/front-desk/sandbox-console";
 import { triageClassifier } from "@/lib/ai";
+import { claimBase } from "@/lib/claim";
 import { getEnv } from "@/lib/env";
 import { logger } from "@/lib/logger";
 import { createLimiter } from "@/lib/rate-limit";
@@ -40,9 +41,9 @@ async function visitor(): Promise<string> {
 async function sampleClinic() {
   const org = getEnv().PUBLIC_SANDBOX_ORG;
   if (!org) return null;
-  const { pool } = await tenancy().clinicPool(org);
+  const { pool, tenant } = await tenancy().clinicPool(org);
   const { rows } = await pool.query<{ id: string }>(`SELECT id FROM locations WHERE status <> 'closed' ORDER BY name LIMIT 1`);
-  return rows[0] ? { pool, locationId: rows[0].id } : null;
+  return rows[0] ? { pool, locationId: rows[0].id, organizationId: tenant.organization_id } : null;
 }
 
 async function ownedCalls(): Promise<string[]> {
@@ -102,7 +103,7 @@ export async function sendPublicAction(callId: string, text: string): Promise<Co
     if (!body) return { ok: false, error: "Type a message." };
     const clinic = await sampleClinic();
     if (!clinic) return { ok: false, error: "The browser trial is not available right now." };
-    const r = await continueFrontDesk(clinic.pool, { locationId: clinic.locationId, callId, text: body }, Date.now(), { classify: triageClassifier() });
+    const r = await continueFrontDesk(clinic.pool, { locationId: clinic.locationId, callId, text: body }, Date.now(), { classify: triageClassifier(), claimBase: claimBase(clinic.organizationId) });
     return { ok: true, ...r };
   } catch (error) {
     logger.error("public trial message failed", { error });

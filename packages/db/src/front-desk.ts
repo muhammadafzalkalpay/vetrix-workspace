@@ -39,6 +39,7 @@ import {
 import { getVeterinaryPack } from "@vetrix/pack";
 import { bookAppointment, cancelAppointment, loadPatientForBooking, loadSchedulingData, loadService, rescheduleAppointment } from "./booking";
 import { createClient, createPatient, markPatientDeceased, withTransaction, type Actor, type TransactionPool } from "./clients";
+import { offerFreedSlot } from "./waitlist";
 import type { SqlClient } from "./sql-client";
 
 const AI: Actor = { type: "ai", id: null };
@@ -173,6 +174,8 @@ export type TriageClassifier = (text: string, petNames: string[]) => Promise<Tri
 
 export interface FrontDeskOptions {
   classify?: TriageClassifier;
+  /** Base of waitlist claim links ("https://…/claim/<organization id>"). Without it, freed times are not offered. */
+  claimBase?: string;
 }
 
 /** The sandbox AI's classifier: pack phrases and broad cues. */
@@ -198,13 +201,29 @@ const newNotes = (): PortNotes => ({ notes: [], outbound: [], transferTo: null }
 
 function createPort(
   db: SqlClient,
-  input: { locationId: string; callId: string; setup: Setup; sandbox: boolean; channel: "voice" | "sms"; classify?: TriageClassifier },
+  input: { locationId: string; callId: string; setup: Setup; sandbox: boolean; channel: "voice" | "sms"; classify?: TriageClassifier; claimBase?: string },
   out: PortNotes,
 ): FrontDeskPort {
   const { locationId, callId, setup, sandbox } = input;
   const label = sandbox ? "Sandbox: " : "";
 
   const serviceRow = (packServiceId: string) => setup.serviceIds.get(packServiceId) ?? null;
+
+  /** A cancelled or moved visit: offer its time to the waitlist (never fails the turn). */
+  const offerToWaitlist = async (appointmentId: string) => {
+    if (!input.claimBase) return;
+    await db.query("SAVEPOINT waitlist_offer");
+    try {
+      const r = await offerFreedSlot(db, {
+        locationId, appointmentId, now: setup.ctx.now, sandbox,
+        values: { clinicName: setup.ctx.clinicName, aiName: setup.ctx.aiName, timezone: setup.ctx.timezone, claimBase: input.claimBase },
+      });
+      await db.query("RELEASE SAVEPOINT waitlist_offer");
+      if (r.offers) out.notes.push(`${label}The freed time was offered to ${r.offers} ${r.offers === 1 ? "pet" : "pets"} on the waitlist.`);
+    } catch {
+      await db.query("ROLLBACK TO SAVEPOINT waitlist_offer");
+    }
+  };
 
   const insertPet = async (clientId: string, p: NewPetInput): Promise<PetRef> => {
     const patient = validatePatient(
@@ -392,6 +411,7 @@ function createPort(
         const r = await rescheduleAppointment(db, { locationId, appointmentId: req.appointmentId, start: req.slot.start, providerId: req.slot.providerId, actor: AI, today: setup.today });
         await db.query("RELEASE SAVEPOINT ai_book");
         await db.query(`UPDATE calls SET appointment_id = $2 WHERE id = $1`, [callId, r.appointmentId]);
+        await offerToWaitlist(req.appointmentId);
         return { appointmentId: r.appointmentId, providerName: await providerName(r.slot.providerId) };
       } catch (error) {
         await db.query("ROLLBACK TO SAVEPOINT ai_book");
@@ -402,6 +422,7 @@ function createPort(
     async cancel(req) {
       await cancelAppointment(db, { locationId, appointmentId: req.appointmentId, reason: req.reason, actor: AI, lateCancel: req.lateCancel });
       out.notes.push(`${label}Visit cancelled${req.lateCancel ? " (late cancellation)" : ""}.`);
+      await offerToWaitlist(req.appointmentId);
     },
 
     async markDeceased(req) {
@@ -579,7 +600,7 @@ async function runTurn(
     const setup = await loadSetup(db, input.locationId, now);
     const ctx: FrontDeskContext = { ...setup.ctx, callerNumber: call.caller_number, channel: call.channel };
     const out = newNotes();
-    const port = createPort(db, { locationId: input.locationId, callId: input.callId, setup, sandbox: call.sandbox, channel: call.channel, classify: options.classify }, out);
+    const port = createPort(db, { locationId: input.locationId, callId: input.callId, setup, sandbox: call.sandbox, channel: call.channel, classify: options.classify, claimBase: options.claimBase }, out);
     const { state, replies } = await step(call.state, ctx, port);
     const ended = state.phase === "ended" && !out.transferTo;
     await addTurns(db, input.callId, [

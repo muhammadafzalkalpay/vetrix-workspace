@@ -13,6 +13,7 @@ export type ReplyIntent =
   | "deceased"
   | "moved"
   | "post_op_concern"
+  | "waitlist_claim"
   | "conversation";
 
 export interface ReplyRules {
@@ -36,6 +37,7 @@ export function classifyReply(text: string, lastTemplate: string | null, rules: 
   if (w === "r" || w === "reschedule") return "reschedule";
   if (w === "refill" || w === "refill please") return "refill";
   if (lastTemplate === "fasting_check_evening" && /^(yes|y|yep|yeah|ok|okay|will do|got it|confirmed)$/.test(w)) return "fasting_confirmed";
+  if (lastTemplate === "waitlist_offer" && /^(yes|y|yep|yeah|claim|i ll take it|ill take it|yes please)$/.test(w)) return "waitlist_claim";
   // Past tense only: "we had him put down last week" is a death, not a request.
   if (has(rules.deceased_phrases.filter((p) => !/^put /.test(p))) || /\b(was|had (?:him|her)|got (?:him|her)) put (?:down|to sleep)\b/.test(w)) return "deceased";
   if (has(rules.moved_phrases) && /\b(moved|new vet|another vet|somewhere else|switched)\b/.test(w)) return "moved";

@@ -92,7 +92,7 @@ export async function simulateReplyAction(clientId: string, text: string): Promi
     if (!UUID.test(clientId)) throw new ValidationError("Choose a client.");
     if (!text.trim()) throw new ValidationError("Type the reply.");
     const { client } = await getClientThread(shell.clinic, shell.location.id, clientId);
-    const r = await processIncomingText({ clinic: shell.clinic, locationId: shell.location.id, mobile: client.mobile, body: text, sandbox: true });
+    const r = await processIncomingText({ clinic: shell.clinic, organizationId: shell.organization.organization_id, locationId: shell.location.id, mobile: client.mobile, body: text, sandbox: true });
     revalidatePath(`/messages/${clientId}`);
     return { ok: true, texts: r.texts, notes: r.notes, callId: r.callId };
   } catch (error) {

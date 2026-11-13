@@ -20,6 +20,7 @@ import {
   type TurnOutput,
 } from "@vetrix/db/runtime";
 import { triageClassifier } from "@/lib/ai";
+import { claimBase } from "@/lib/claim";
 import { processIncomingText } from "./incoming-text";
 import { getEnv, getMessagingMode } from "@/lib/env";
 import { logger } from "@/lib/logger";
@@ -33,6 +34,7 @@ type Clinic = Awaited<ReturnType<ReturnType<typeof tenancy>["clinicPool"]>>["poo
 interface Context {
   params: Record<string, string>;
   clinic: Clinic;
+  organizationId: string;
   locationId: string;
   clinicNumber: string;
   sandbox: boolean;
@@ -55,7 +57,7 @@ async function resolve(request: Request): Promise<{ ok: true; ctx: Context } | {
   const { pool } = await t.clinicPool(route.organizationId);
   return {
     ok: true,
-    ctx: { params: check.params, clinic: pool, locationId: route.locationId, clinicNumber: route.e164, sandbox: getMessagingMode() === "sandbox" },
+    ctx: { params: check.params, clinic: pool, organizationId: route.organizationId, locationId: route.locationId, clinicNumber: route.e164, sandbox: getMessagingMode() === "sandbox" },
   };
 }
 
@@ -91,7 +93,7 @@ export async function handleIncomingText(request: Request): Promise<Response> {
   const body = (ctx.params.Body ?? "").trim().slice(0, MAX_TEXT);
   if (!body) return twiml("");
 
-  const r = await processIncomingText({ clinic: ctx.clinic, locationId: ctx.locationId, mobile, body, sandbox: ctx.sandbox });
+  const r = await processIncomingText({ clinic: ctx.clinic, organizationId: ctx.organizationId, locationId: ctx.locationId, mobile, body, sandbox: ctx.sandbox });
   // Sandbox: everything is recorded; nothing is texted back.
   if (ctx.sandbox) return twiml("");
   for (const o of r.sentWithReply) {
@@ -147,7 +149,7 @@ export async function handleCallTurn(request: Request): Promise<Response> {
     }
     return twiml(gather(`${TURN}?silence=${silence + 1}`, say("Are you still there?")) + `<Redirect method="POST">${TURN}?silence=${silence + 1}</Redirect>`);
   }
-  const r = await continueFrontDesk(ctx.clinic, { locationId: ctx.locationId, callId, text: speech.slice(0, MAX_TEXT) }, Date.now(), { classify: triageClassifier() });
+  const r = await continueFrontDesk(ctx.clinic, { locationId: ctx.locationId, callId, text: speech.slice(0, MAX_TEXT) }, Date.now(), { classify: triageClassifier(), claimBase: claimBase(ctx.organizationId) });
   await deliver(ctx, r.outbound);
   return twiml(nextStep(r));
 }

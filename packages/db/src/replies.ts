@@ -3,6 +3,7 @@
 import { classifyReply, fillScript, type ReplyIntent, type ReplyRules } from "@vetrix/domain";
 import { getVeterinaryPack } from "@vetrix/pack";
 import { writeAudit, type Actor } from "./clients";
+import { claimOffer, openOfferTokenForClient } from "./waitlist";
 import type { SqlClient } from "./sql-client";
 
 const AI: Actor = { type: "ai", id: null };
@@ -49,7 +50,7 @@ const when = (d: Date, tz: string) =>
  */
 export async function handleClientReply(
   db: SqlClient,
-  input: { locationId: string; clientId: string; text: string; values: ReplyValues },
+  input: { locationId: string; clientId: string; text: string; values: ReplyValues; sandbox?: boolean },
 ): Promise<ReplyOutcome> {
   const last = await lastOutbound(db, input.locationId, input.clientId);
   const intent = classifyReply(input.text, last?.template_key ?? null, retention().inbound_reply_handling);
@@ -94,6 +95,15 @@ export async function handleClientReply(
         );
       }
       return { handled: true, intent, reply: `Thank you. No food for ${pet} after midnight, water is fine. See you at drop-off tomorrow.`, notes: [`Fasting confirmed for ${pet}`] };
+    }
+    case "waitlist_claim": {
+      const token = await openOfferTokenForClient(db, input.locationId, input.clientId);
+      if (!token) return { handled: true, intent, reply: "Sorry, that offer has ended. You're still on our waitlist.", notes: [] };
+      const r = await claimOffer(db, { token, now: Date.now(), sandbox: input.sandbox ?? true, clinicName: input.values.clinicName, recordConfirmation: false });
+      if (r.status === "claimed") {
+        return { handled: true, intent, reply: `You're booked: ${r.petName}, ${r.when}. Reply C to confirm or R to reschedule.`, notes: [`Waitlist time claimed for ${r.petName}`] };
+      }
+      return { handled: true, intent, reply: r.status === "expired" ? "Sorry, that offer has ended. You're still on our waitlist." : "Sorry, that time was just taken. You're still on our waitlist.", notes: [] };
     }
     case "help":
       return { handled: true, intent, reply: fillScript(retention().templates.help_reply ?? "", { clinic_name: input.values.clinicName, clinic_phone: input.values.clinicPhone }), notes: [] };

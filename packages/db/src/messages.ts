@@ -147,3 +147,12 @@ export async function messagingSettings(db: SqlClient, locationId: string): Prom
   if (!r) throw new NotFoundError("Location", locationId);
   return { timezone: r.timezone, clinicName: r.name, quietStart: r.quiet_start ?? "20:00", quietEnd: r.quiet_end ?? "08:00" };
 }
+
+/** Live messages saved but not yet sent (oldest first), for the scheduler to send. */
+export async function queuedMessages(db: SqlClient, locationId: string, limit = 100): Promise<{ messageId: string; clientId: string; channel: "sms" | "email" | "ai_call"; body: string }[]> {
+  const { rows } = await db.query<{ messageId: string; clientId: string; channel: "sms" | "email" | "ai_call"; body: string }>(
+    `SELECT id AS "messageId", client_id AS "clientId", channel, body FROM messages WHERE location_id = $1 AND status = 'queued' ORDER BY created_at LIMIT $2`,
+    [locationId, limit],
+  );
+  return rows;
+}

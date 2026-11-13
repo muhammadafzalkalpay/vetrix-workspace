@@ -11,6 +11,7 @@ import { getVeterinaryPack } from "@vetrix/pack";
 import type { Actor } from "./clients";
 import { runReminders, type RunSummary } from "./retention";
 import type { SqlClient } from "./sql-client";
+import { waitlistFollowUps } from "./waitlist";
 
 const SYSTEM: Actor = { type: "system", id: null };
 const toMin = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5));
@@ -27,6 +28,7 @@ export interface JobResult {
   reminders?: RunSummary;
   fastingChecks?: number;
   fastingTasks?: number;
+  waitlist?: { expired: number; calls: number };
   /** Live mode: messages saved as queued, to be sent by the caller. */
   outbound: { messageId: string; clientId: string; channel: "sms" | "email" | "ai_call"; body: string }[];
 }
@@ -118,6 +120,13 @@ export async function runDueJobs(db: SqlClient, input: { locationId: string; now
     }
     result.ran.push("fasting_no_reply");
     result.fastingTasks = open.length;
+  }
+
+  // 4. Every tick: waitlist offers unclaimed for 30 minutes, then AI calls to the next two.
+  const wl = await waitlistFollowUps(db, { locationId: input.locationId, now: input.now, sandbox: input.sandbox, values: { clinicName: input.values.clinicName, aiName: input.values.aiName, timezone: loc.timezone, claimBase: "" } });
+  if (wl.expired || wl.calls) {
+    result.ran.push("waitlist_follow_up");
+    result.waitlist = wl;
   }
   return result;
 }

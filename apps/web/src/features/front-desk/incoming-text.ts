@@ -16,6 +16,7 @@ import {
 } from "@vetrix/db/runtime";
 import { formatPhone } from "@vetrix/domain";
 import { triageClassifier } from "@/lib/ai";
+import { claimBase } from "@/lib/claim";
 import type { ClinicPool } from "@/lib/staff-context";
 
 export interface IncomingTextResult {
@@ -30,7 +31,7 @@ export interface IncomingTextResult {
   callId: string | null;
 }
 
-export async function processIncomingText(input: { clinic: ClinicPool; locationId: string; mobile: string; body: string; sandbox: boolean }): Promise<IncomingTextResult> {
+export async function processIncomingText(input: { clinic: ClinicPool; organizationId: string; locationId: string; mobile: string; body: string; sandbox: boolean }): Promise<IncomingTextResult> {
   const { clinic, locationId, mobile, sandbox } = input;
   const body = input.body.trim().slice(0, 1000);
   const empty: IncomingTextResult = { texts: [], others: [], sentWithReply: [], notes: [], callId: null };
@@ -53,6 +54,7 @@ export async function processIncomingText(input: { clinic: ClinicPool; locationI
         clientId: client.id,
         text: body,
         values: { clinicName: settings.clinicName, clinicPhone: phone ? safePhone(phone) : "the clinic", timezone: settings.timezone },
+        sandbox,
       });
       // Our answer is part of the client's message history.
       if (o.handled && o.reply) {
@@ -69,7 +71,7 @@ export async function processIncomingText(input: { clinic: ClinicPool; locationI
 
   let callId = await findOpenTextThread(clinic, locationId, mobile);
   if (!callId) callId = (await startFrontDesk(clinic, { locationId, channel: "sms", callerNumber: mobile, sandbox })).callId;
-  const r = await continueFrontDesk(clinic, { locationId, callId, text }, Date.now(), { classify: triageClassifier() });
+  const r = await continueFrontDesk(clinic, { locationId, callId, text }, Date.now(), { classify: triageClassifier(), claimBase: claimBase(input.organizationId) });
   const forCaller = r.outbound.filter((o) => o.to === mobile);
   return {
     texts: [r.replies.join(" "), ...forCaller.map((o) => o.body)].filter(Boolean),

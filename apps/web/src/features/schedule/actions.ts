@@ -28,6 +28,7 @@ import {
 import { toActionError, type ActionResult } from "@/lib/action-result";
 import { clinicToday } from "@/lib/clinic-date";
 import { requireShell } from "@/lib/session";
+import { offerFreedTime } from "@/features/waitlist/offer";
 
 async function allowed(permission: Permission) {
   const shell = await requireShell();
@@ -166,6 +167,7 @@ export async function bookAction(_: ActionResult | null, f: FormData): Promise<A
     );
     date = localParts(result.slot.start, shell.location.timezone).date;
     id = result.appointmentId;
+    if (reschedule) await offerFreedTime(shell, String(reschedule));
   } catch (error) {
     return toActionError(error);
   }
@@ -182,6 +184,7 @@ export async function cancelAction(appointmentId: string, date: string, _: Actio
     await withTransaction(shell.clinic, (tx) =>
       cancelAppointment(tx, { locationId: shell.location.id, appointmentId: uuid(appointmentId, "visit"), reason, actor, lateCancel: f.get("late") === "on" }),
     );
+    await offerFreedTime(shell, appointmentId);
   } catch (error) {
     return toActionError(error);
   }

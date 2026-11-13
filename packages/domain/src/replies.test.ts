@@ -19,6 +19,10 @@ describe("classifyReply (retention.json inbound_reply_handling)", () => {
     expect(classifyReply("yes", "wellness_due_30", rules)).toBe("conversation");
   });
 
+  it("claims a waitlist offer with YES", () => {
+    expect(classifyReply("yes please", "waitlist_offer", rules)).toBe("waitlist_claim");
+  });
+
   it("recognises a death, but not an end-of-life request", () => {
     expect(classifyReply("Bella passed away last month", "vaccine_due_30", rules)).toBe("deceased");
     expect(classifyReply("we had him put down last week", null, rules)).toBe("deceased");
