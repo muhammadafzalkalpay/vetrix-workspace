@@ -19,7 +19,7 @@ import { addOrganizationMember, ensurePlatformUser } from "./members";
 import { isRoleKey, ROLE_KEYS } from "@vetrix/domain";
 import { listTenantDatabases, recordTenantMigrations, registerTenant, setTenantStatus, type TenantDatabase } from "./tenants";
 
-const EXPECTED_TABLES: Record<MigrationTarget, number> = { registry: 12, clinic: 57 };
+const EXPECTED_TABLES: Record<MigrationTarget, number> = { registry: 12, clinic: 58 };
 
 function registryUrl(): string {
   const url = process.env.REGISTRY_DATABASE_URL;

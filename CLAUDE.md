@@ -17,7 +17,7 @@ Read `docs/HANDOFF.md` for the full planning history.
 - Sign-in: Better Auth, users and sessions in the registry. Public sign-up is off; staff are added (`pnpm db:staff:add` until onboarding) and set a password via "Forgot password". Roles are per location; permissions come from `packages/domain/src/access.ts`. Web code imports `@vetrix/db/runtime`, never `@vetrix/db`.
 - Business rules live in `packages/domain`, never in React components or route handlers.
 - New clinic databases are created automatically at signup through the Neon API. A CLI script covers manual creation.
-- The schema is created manually from `db/migrations`. Registry: 12 tables (001_registry + 003_auth). Clinic: 57 tables. Never run both files in one database. Add changes as new numbered files.
+- The schema is created manually from `db/migrations`. Registry: 12 tables (001_registry + 003_auth). Clinic: 58 tables (002_clinic + 004_front_desk). Never run both files in one database. Add changes as new numbered files.
 
 ## Pack v0.2 rules that are easy to miss
 - Triage classifies by meaning, treats pack phrases as examples, escalates when unsure, and never lowers a level within a call.
