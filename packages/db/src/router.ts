@@ -93,14 +93,21 @@ const TENANT_LOOKUP_SQL = `
 
 /** Production router: registry over Neon, one small pool per clinic database. */
 export function createNeonTenantRouter(registryUrl: string, env: Record<string, string | undefined> = process.env) {
-  const registry = new Pool({ connectionString: registryUrl, max: 5 });
+  // An idle connection the database drops (restart, password change, network)
+  // emits "error" on the pool; without a listener Node treats it as a crash.
+  // Log it and let the next query open a fresh connection.
+  const quiet = (pool: Pool, name: string) => {
+    pool.on("error", (error: Error) => console.warn(`[db] ${name} connection dropped: ${error.message}`));
+    return pool;
+  };
+  const registry = quiet(new Pool({ connectionString: registryUrl, max: 5 }), "registry");
   const router = createTenantRouter<Pool>({
     env,
     lookup: async (organization) => {
       const { rows } = await registry.query<TenantDatabase>(TENANT_LOOKUP_SQL, [organization]);
       return rows[0];
     },
-    createPool: (connectionString) => new Pool({ connectionString, max: 5 }),
+    createPool: (connectionString) => quiet(new Pool({ connectionString, max: 5 }), "clinic"),
   });
   return {
     registry,

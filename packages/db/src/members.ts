@@ -48,3 +48,10 @@ export async function membershipsFor(registry: SqlClient, platformUserId: string
   );
   return rows;
 }
+
+/** Emails for staff records (registry), by platform user id. */
+export async function platformUserEmails(registry: SqlClient, ids: string[]): Promise<Map<string, string>> {
+  if (ids.length === 0) return new Map();
+  const { rows } = await registry.query<{ id: string; email: string }>(`SELECT id, email::text AS email FROM platform_users WHERE id = ANY($1::uuid[])`, [ids]);
+  return new Map(rows.map((r) => [r.id, r.email]));
+}

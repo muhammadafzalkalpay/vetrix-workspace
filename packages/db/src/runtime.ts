@@ -14,3 +14,6 @@ export * from "./front-desk";
 export * from "./tasks";
 export * from "./phone-numbers";
 export * from "./messages";
+export * from "./team";
+export * from "./reports";
+export * from "./retention";
