@@ -10,6 +10,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { assertId, orNotFound, requirePage } from "@/features/clients/access";
 import { formatWhen, SandboxBadge } from "@/features/front-desk/labels";
 import { Compose } from "@/features/messages/compose";
+import { SimulateReply } from "@/features/messages/simulate-reply";
 import { MessageStatusBadge } from "@/features/messages/status";
 import { getMessagingMode } from "@/lib/env";
 import { cn } from "@/lib/utils";
@@ -106,6 +107,12 @@ export default async function ClientMessagesPage({ params }: { params: Promise<{
               <p className="text-small text-muted-foreground">You can read messages but not send them.</p>
             )}
           </Panel>
+
+          {canSend && getMessagingMode() === "sandbox" && (
+            <Panel title="Client replies (Sandbox)">
+              <SimulateReply clientId={client.id} firstName={client.first_name} />
+            </Panel>
+          )}
 
           {conversations.length > 0 && shell.permissions.has("calls.view") && (
             <Panel title="Text conversations with the front desk">

@@ -214,7 +214,7 @@ export interface FrontDeskPort {
   createCaller(req: { firstName: string; lastName: string; mobile: string; email: string | null; smsConsent: boolean; pet: NewPetInput }): Promise<CallerRecord>;
   addPet(req: { clientId: string; pet: NewPetInput }): Promise<PetRef>;
   createTask(req: TaskRequest): Promise<void>;
-  sendText(req: { to: string; body: string; templateKey: string; clientId: string | null }): Promise<void>;
+  sendText(req: { to: string; body: string; templateKey: string; clientId: string | null; patientId?: string | null; appointmentId?: string | null }): Promise<void>;
   transfer(req: { to: string; summary: string }): Promise<{ ok: boolean }>;
   logTriage(req: { match: TriageMatch; actionTaken: string }): Promise<void>;
 }
@@ -955,6 +955,8 @@ class Turn {
       body: fillScript(SCRIPTS.confirmationSms, { clinic_name: this.ctx.clinicName, visits: lines.join(" ").replace(/\.$/, "") }),
       templateKey: "appointment_confirmation",
       clientId: this.s.caller.clientId,
+      patientId: pets.length === 1 ? pets[0]!.id : null,
+      appointmentId: visits.length === 1 ? visits[0]!.appointmentId : null,
     });
   }
 

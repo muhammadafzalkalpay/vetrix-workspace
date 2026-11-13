@@ -3,14 +3,12 @@
 // Send today's due reminders (Sandbox: saved, not sent) and stop one reminder.
 import { revalidatePath } from "next/cache";
 import { ForbiddenError, formatPhone, isQuietHours, localParts, ValidationError } from "@vetrix/domain";
-import { aiPersonaName, messagingSettings, numberForLocation, runReminders, setMessageResult, stopReminder, withTransaction, type Actor, type RunSummary } from "@vetrix/db/runtime";
+import { aiPersonaName, messagingSettings, runReminders, stopReminder, withTransaction, type Actor, type RunSummary } from "@vetrix/db/runtime";
 import { clinicToday } from "@/lib/clinic-date";
-import { sendEmail } from "@/lib/email";
-import { getEnv, getMessagingMode } from "@/lib/env";
+import { getMessagingMode } from "@/lib/env";
 import { logger } from "@/lib/logger";
+import { deliverQueued } from "@/lib/outbound";
 import { requireShell } from "@/lib/session";
-import { tenancy } from "@/lib/tenancy";
-import { sendSms } from "@/lib/twilio";
 
 const ISO = /^\d{4}-\d{2}-\d{2}$/;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -50,37 +48,8 @@ export async function runRemindersAction(asOfInput: string): Promise<RunResult> 
       }),
     );
 
-    if (!sandbox && outbound.length) {
-      // Live: send after the run is saved, and record each result.
-      const env = getEnv();
-      const from = await numberForLocation(tenancy().registry, { organizationId: shell.organization.organization_id, locationId: loc });
-      const contacts = new Map(
-        (await shell.clinic.query<{ id: string; mobile: string; email: string | null }>(`SELECT id, mobile, email FROM clients WHERE id = ANY($1::uuid[])`, [[...new Set(outbound.map((o) => o.clientId))]])).rows.map((c) => [c.id, c]),
-      );
-      for (const o of outbound) {
-        const c = contacts.get(o.clientId);
-        let ok = false;
-        let id: string | null = null;
-        let error: string | null = null;
-        try {
-          if (o.channel === "sms" && from && env.TWILIO_ACCOUNT_SID && env.TWILIO_AUTH_TOKEN && c) {
-            const r = await sendSms({ accountSid: env.TWILIO_ACCOUNT_SID, authToken: env.TWILIO_AUTH_TOKEN }, { from, to: c.mobile, body: o.body });
-            ok = r.ok;
-            id = r.sid;
-          } else if (o.channel === "email" && env.SENDGRID_API_KEY && env.EMAIL_FROM && c?.email) {
-            const r = await sendEmail({ apiKey: env.SENDGRID_API_KEY, from: env.EMAIL_FROM, fromName: settings.clinicName }, { to: c.email, subject: `A reminder from ${settings.clinicName}`, text: o.body });
-            ok = r.ok;
-            id = r.id;
-          } else {
-            error = o.channel === "ai_call" ? "Reminder calls need the voice service." : "Sending is not set up for this channel.";
-          }
-        } catch (e) {
-          logger.error("reminder send failed", { error: e, channel: o.channel });
-          error = "Could not send.";
-        }
-        await setMessageResult(shell.clinic, { locationId: loc, messageId: o.messageId, ok, providerMessageId: id, error });
-      }
-    }
+    // Live: send after the run is saved, and record each result.
+    if (!sandbox) await deliverQueued({ clinic: shell.clinic, organizationId: shell.organization.organization_id, locationId: loc, clinicName: settings.clinicName, messages: outbound });
     revalidatePath("/reminders");
     revalidatePath("/messages");
     return { ok: true, summary, sandbox };

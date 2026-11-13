@@ -9,11 +9,9 @@
 import "server-only";
 import { normalizePhone } from "@vetrix/domain";
 import {
-  applyTextKeyword,
   continueFrontDesk,
   endFrontDesk,
   findCallByProviderId,
-  findOpenTextThread,
   markMessageSent,
   routePhoneNumber,
   startFrontDesk,
@@ -22,6 +20,7 @@ import {
   type TurnOutput,
 } from "@vetrix/db/runtime";
 import { triageClassifier } from "@/lib/ai";
+import { processIncomingText } from "./incoming-text";
 import { getEnv, getMessagingMode } from "@/lib/env";
 import { logger } from "@/lib/logger";
 import { tenancy } from "@/lib/tenancy";
@@ -92,23 +91,14 @@ export async function handleIncomingText(request: Request): Promise<Response> {
   const body = (ctx.params.Body ?? "").trim().slice(0, MAX_TEXT);
   if (!body) return twiml("");
 
-  // Carrier keywords: Twilio sends its own STOP/START confirmation.
-  if (await applyTextKeyword(ctx.clinic, { locationId: ctx.locationId, mobile, body })) return twiml("");
-
-  let callId = await findOpenTextThread(ctx.clinic, ctx.locationId, mobile);
-  if (!callId) {
-    callId = (await startFrontDesk(ctx.clinic, { locationId: ctx.locationId, channel: "sms", callerNumber: mobile, sandbox: ctx.sandbox })).callId;
-  }
-  const r = await continueFrontDesk(ctx.clinic, { locationId: ctx.locationId, callId, text: body }, Date.now(), { classify: triageClassifier() });
+  const r = await processIncomingText({ clinic: ctx.clinic, locationId: ctx.locationId, mobile, body, sandbox: ctx.sandbox });
+  // Sandbox: everything is recorded; nothing is texted back.
   if (ctx.sandbox) return twiml("");
-
-  // Texts for this caller go in the reply itself; anything else by REST.
-  const forCaller = r.outbound.filter((o) => o.to === mobile);
-  for (const o of forCaller) {
+  for (const o of r.sentWithReply) {
     if (o.messageId) await markMessageSent(ctx.clinic, { locationId: ctx.locationId, messageId: o.messageId, providerMessageId: null, ok: true });
   }
-  await deliver(ctx, r.outbound.filter((o) => o.to !== mobile));
-  return twiml([r.replies.join(" "), ...forCaller.map((o) => o.body)].filter(Boolean).map(message).join(""));
+  await deliver(ctx, r.others);
+  return twiml(r.texts.map(message).join(""));
 }
 
 // ---------- Calls ----------

@@ -212,11 +212,13 @@ export async function runReminders(
   }
   if (messages.length) {
     await db.query(
-      `INSERT INTO messages (id, location_id, client_id, channel, template_key, body, status, sent_at)
-       SELECT u.id, $1, u.client_id, u.channel, u.template_key, u.body, $2, $3
-       FROM unnest($4::uuid[], $5::uuid[], $6::text[], $7::text[], $8::text[]) AS u(id, client_id, channel, template_key, body)`,
+      `INSERT INTO messages (id, location_id, client_id, patient_id, channel, template_key, body, status, sent_at)
+       SELECT u.id, $1, u.client_id, u.patient_id, u.channel, u.template_key, u.body, $2, $3
+       FROM unnest($4::uuid[], $5::uuid[], $6::text[], $7::text[], $8::text[], $9::uuid[]) AS u(id, client_id, channel, template_key, body, patient_id)`,
       [input.locationId, input.sandbox ? "simulated" : "queued", input.sandbox ? new Date() : null,
-       messages.map((m) => m.id), messages.map((m) => m.clientId), messages.map((m) => m.channel), messages.map((m) => m.templateKey), messages.map((m) => m.body)],
+       messages.map((m) => m.id), messages.map((m) => m.clientId), messages.map((m) => m.channel), messages.map((m) => m.templateKey), messages.map((m) => m.body),
+       // A household message is about several pets: keep it unlinked so a reply asks which.
+       messages.map((m) => (m.touches.length === 1 ? m.touches[0]!.patientId : null))],
     );
   }
   if (touches.length) {

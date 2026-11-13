@@ -15,3 +15,4 @@ export * from "./front-desk";
 export * from "./triage-ai";
 export * from "./messaging";
 export * from "./retention";
+export * from "./replies";

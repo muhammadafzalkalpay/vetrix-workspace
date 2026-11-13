@@ -55,6 +55,8 @@ export const envSchema = z
     // database (slug). It must be a sample clinic: visitors create sample
     // clients and bookings there. Unset: the browser trial is off.
     PUBLIC_SANDBOX_ORG: optional,
+    // Bearer token Cloud Scheduler sends to /api/jobs/tick. Required in production.
+    JOBS_SECRET: optional,
     SENTRY_DSN: optional,
   })
   .superRefine((env, ctx) => {
@@ -73,6 +75,10 @@ export const envSchema = z
         if (!env[key]) {
           ctx.addIssue({ code: "custom", path: [key], message: "Required in production for sign-in emails" });
         }
+      }
+      // Without it anyone could trigger the scheduled jobs.
+      if (!env.JOBS_SECRET || env.JOBS_SECRET.length < 32) {
+        ctx.addIssue({ code: "custom", path: ["JOBS_SECRET"], message: "Required in production: at least 32 random characters" });
       }
     }
     // A key without a model would fail on the first call.

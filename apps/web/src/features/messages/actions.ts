@@ -12,6 +12,7 @@ import { getEnv, getMessagingMode } from "@/lib/env";
 import { logger } from "@/lib/logger";
 import { requireShell } from "@/lib/session";
 import { tenancy } from "@/lib/tenancy";
+import { processIncomingText } from "@/features/front-desk/incoming-text";
 import { sendSms } from "@/lib/twilio";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -77,5 +78,25 @@ export async function sendMessageAction(clientId: string, _: ActionResult | null
   } catch (error) {
     const r = toActionError(error);
     return r.ok ? r : { ...r, values };
+  }
+}
+
+export type SimulatedReply = { ok: true; texts: string[]; notes: string[]; callId: string | null } | { ok: false; error: string };
+
+/** Sandbox only: type what the client would text back, as if it came from their phone. */
+export async function simulateReplyAction(clientId: string, text: string): Promise<SimulatedReply> {
+  try {
+    const shell = await requireShell();
+    if (!shell.permissions.has("messages.send")) throw new ForbiddenError();
+    if (getMessagingMode() !== "sandbox") throw new RuleViolationError("sandbox_only", "Replies can only be simulated in Sandbox mode.");
+    if (!UUID.test(clientId)) throw new ValidationError("Choose a client.");
+    if (!text.trim()) throw new ValidationError("Type the reply.");
+    const { client } = await getClientThread(shell.clinic, shell.location.id, clientId);
+    const r = await processIncomingText({ clinic: shell.clinic, locationId: shell.location.id, mobile: client.mobile, body: text, sandbox: true });
+    revalidatePath(`/messages/${clientId}`);
+    return { ok: true, texts: r.texts, notes: r.notes, callId: r.callId };
+  } catch (error) {
+    const r = toActionError(error);
+    return { ok: false, error: r.ok ? "Something went wrong." : r.error };
   }
 }

@@ -17,3 +17,5 @@ export * from "./messages";
 export * from "./team";
 export * from "./reports";
 export * from "./retention";
+export * from "./replies";
+export * from "./jobs";

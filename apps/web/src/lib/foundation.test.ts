@@ -6,11 +6,15 @@ const base = {
   REGISTRY_DATABASE_URL: "postgres://u:p@host/db",
   BETTER_AUTH_SECRET: "x".repeat(32),
 };
-const prodEmail = { SENDGRID_API_KEY: "sg", EMAIL_FROM: "desk@example.com" };
+const prodEmail = { SENDGRID_API_KEY: "sg", EMAIL_FROM: "desk@example.com", JOBS_SECRET: "j".repeat(32) };
 
 describe("environment config", () => {
   it("defaults to sandbox outside production", () => {
     expect(parseEnv(base).MESSAGING_MODE).toBe("sandbox");
+  });
+
+  it("requires a long jobs secret in production", () => {
+    expect(() => parseEnv({ ...base, ...prodEmail, JOBS_SECRET: "short", NODE_ENV: "production", MESSAGING_MODE: "sandbox" })).toThrow(/JOBS_SECRET/);
   });
 
   it("requires an explicit messaging mode in production", () => {

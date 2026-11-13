@@ -452,9 +452,9 @@ function createPort(
       let messageId: string | null = null;
       if (t.clientId) {
         const { rows } = await db.query<{ id: string }>(
-          `INSERT INTO messages (location_id, client_id, channel, template_key, body, status, sent_at)
-           VALUES ($1, $2, 'sms', $3, $4, $5, $6) RETURNING id`,
-          [locationId, t.clientId, t.templateKey, t.body, sandbox ? "simulated" : "queued", sandbox ? new Date() : null],
+          `INSERT INTO messages (location_id, client_id, patient_id, appointment_id, channel, template_key, body, status, sent_at)
+           VALUES ($1, $2, $3, $4, 'sms', $5, $6, $7, $8) RETURNING id`,
+          [locationId, t.clientId, t.patientId ?? null, t.appointmentId ?? null, t.templateKey, t.body, sandbox ? "simulated" : "queued", sandbox ? new Date() : null],
         );
         messageId = rows[0]!.id;
       }
