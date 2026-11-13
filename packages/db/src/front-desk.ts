@@ -298,7 +298,7 @@ export async function startFrontDesk(pool: TransactionPool, input: StartInput, n
     const { state, replies } = startConversation(ctx, caller);
     const { rows } = await db.query<{ id: string }>(
       `INSERT INTO calls (location_id, client_id, direction, caller_number, after_hours, started_at, channel, sandbox, state, summary)
-       VALUES ($1, $2, 'inbound', $3, $4, $5, $6, $7, $8, 'In progress') RETURNING id`,
+       VALUES ($1, $2, 'inbound', $3, $4, $5, $6, $7, $8, 'No action yet') RETURNING id`,
       [input.locationId, caller?.clientId ?? null, mobile, !setup.ctx.situation.open, new Date(now), input.channel, input.sandbox, JSON.stringify(state)],
     );
     const callId = rows[0]!.id;
@@ -405,6 +405,7 @@ export interface CallDetail extends CallListItem {
   client_id: string | null;
   patient_id: string | null;
   appointment_id: string | null;
+  appointment_start: Date | null;
   duration_sec: number | null;
   turns: { seq: number; speaker: "caller" | "ai" | "system"; body: string; created_at: Date }[];
   triage: { level: string; trigger_id: string; action_taken: string; evidence: string | null; occurred_at: Date }[];
@@ -414,9 +415,10 @@ export interface CallDetail extends CallListItem {
 export async function getCall(db: SqlClient, locationId: string, callId: string): Promise<CallDetail> {
   const { rows } = await db.query<CallDetail>(
     `SELECT k.id, k.channel, k.sandbox, k.caller_number, k.triage_level, k.summary, k.transfer_outcome, k.after_hours, k.started_at, k.ended_at,
-            k.client_id, k.patient_id, k.appointment_id, k.duration_sec,
+            k.client_id, k.patient_id, k.appointment_id, k.duration_sec, a.start_at AS appointment_start,
             nullif(trim(c.first_name || ' ' || c.last_name), '') AS client_name, p.name AS patient_name
      FROM calls k LEFT JOIN clients c ON c.id = k.client_id LEFT JOIN patients p ON p.id = k.patient_id
+     LEFT JOIN appointments a ON a.id = k.appointment_id AND a.location_id = k.location_id
      WHERE k.id = $1 AND k.location_id = $2`,
     [callId, locationId],
   );
@@ -434,4 +436,10 @@ export async function getCall(db: SqlClient, locationId: string, callId: string)
     ),
   ]);
   return { ...call, turns: turns.rows, triage: triage.rows, tasks: tasks.rows };
+}
+
+/** The AI's name at this location (clinics may rename Riley). */
+export async function aiPersonaName(db: SqlClient, locationId: string): Promise<string> {
+  const { rows } = await db.query<{ name: string | null }>(`SELECT ai_persona_name AS name FROM location_phone_settings WHERE location_id = $1`, [locationId]);
+  return rows[0]?.name ?? getVeterinaryPack().brand.ai_persona.default_name;
 }

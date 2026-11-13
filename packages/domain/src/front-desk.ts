@@ -7,7 +7,7 @@
 // Every caller turn is triaged first. An emergency stops whatever was
 // happening; an urgent symptom switches the booking to a same or next day
 // sick visit. Levels never go down within a conversation.
-import type { Species } from "./clients";
+import { formatPhone, type Species } from "./clients";
 import { ConflictError } from "./errors";
 import { adjustServiceForPet, detectIntent, isGoodbye, isNo, matchService, parseName, speciesFromWords, pickOffered, slotLabel, type Intent } from "./front-desk-language";
 import {
@@ -241,7 +241,7 @@ class Turn {
       // A text thread cannot be transferred: ask them to call, and have staff call them now.
       this.say(`That sounds like it needs a doctor right away.${this.ctx.clinicPhone ? ` Please call us now on ${this.ctx.clinicPhone}.` : ""} I've also asked the team to call you straight away.`);
       for (const m of newMatches) await this.port.logTriage({ match: m, actionTaken: "staff_call_now" });
-      await this.task("emergency_alert", `Emergency: call now: ${lead?.triggerName ?? "caller describes an emergency"}`, `${this.callerLabel()}${this.ctx.callerNumber ? ` (${this.ctx.callerNumber})` : ""} texted about ${this.petName}: "${this.s.reason.at(-1) ?? ""}"`, "urgent");
+      await this.task("emergency_alert", `Emergency: call now: ${lead?.triggerName ?? "caller describes an emergency"}`, `${this.callerLabel()}${this.ctx.callerNumber ? ` (${formatPhone(this.ctx.callerNumber)})` : ""} texted about ${this.petName}: "${this.s.reason.at(-1) ?? ""}"`, "urgent");
       this.s.outcomes.push("emergency_staff_alerted");
       this.s.phase = "ended";
       return;
@@ -285,7 +285,7 @@ class Turn {
       await this.task(
         "emergency_alert",
         `Emergency (${why}): ${lead?.triggerName ?? "caller describes an emergency"}`,
-        `${this.callerLabel()}${this.ctx.callerNumber ? ` (${this.ctx.callerNumber})` : ""} about ${this.petName}. Caller was given the ER partner's details. Said: "${this.s.reason.at(-1) ?? ""}"`,
+        `${this.callerLabel()}${this.ctx.callerNumber ? ` (${formatPhone(this.ctx.callerNumber)})` : ""} about ${this.petName}. Caller was given the ER partner's details. Said: "${this.s.reason.at(-1) ?? ""}"`,
         "urgent",
       );
     }
@@ -589,6 +589,10 @@ export async function respond(state: ConversationState, text: string, ctx: Front
   if (s.phase === "ended") {
     return { state: s, replies: [`This conversation has ended. Please contact ${ctx.clinicName} again if you need anything.`] };
   }
+
+  // A pet named in the message counts even if triage cuts the turn short.
+  const named = turn.findPetIn(text);
+  if (named) s.petId = named.id;
 
   // Triage first, on every utterance, with the household's pet names masked.
   const petNames = [...s.pets.map((p) => p.name), ...(s.newPet?.name ? [s.newPet.name] : [])];

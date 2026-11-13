@@ -61,12 +61,13 @@ export default async function OverviewPage() {
   const data = await loadOverview(shell.clinic, shell.location.id);
   const can = (p: Parameters<typeof shell.permissions.has>[0]) => shell.permissions.has(p);
   const firstName = shell.access.displayName.split(" ")[0];
+  const urgentTasks = data.tasks.filter((t) => t.priority === "urgent").length;
 
   const attention = [
     ...data.tasks.map((t) => ({
       id: t.id,
       urgent: t.priority === "urgent",
-      title: t.details ?? t.type.replaceAll("_", " "),
+      title: t.title ?? t.details ?? t.type.replaceAll("_", " "),
       meta: t.patient_name ? `Task · ${t.patient_name}` : "Task",
       href: "/tasks",
     })),
@@ -102,6 +103,20 @@ export default async function OverviewPage() {
           </p>
         </div>
       </header>
+
+      {urgentTasks > 0 && can("tasks.view") && (
+        <Link
+          href="/tasks"
+          role="alert"
+          className="flex items-center gap-3 rounded-xl border border-destructive/30 bg-danger-soft px-4 py-3 font-medium text-foreground shadow-card transition-colors hover:border-destructive/60"
+        >
+          <AlertTriangle className="size-5 shrink-0 text-destructive" aria-hidden />
+          <span className="flex-1">
+            {urgentTasks} urgent task{urgentTasks === 1 ? "" : "s"} from the front desk need{urgentTasks === 1 ? "s" : ""} a person now.
+          </span>
+          <ArrowRight className="size-4 text-muted-foreground" aria-hidden />
+        </Link>
+      )}
 
       <section aria-label="At a glance" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Stat label="Visits today" value={data.appointments.length} icon={CalendarDays} href={can("schedule.view") ? "/schedule" : undefined} />

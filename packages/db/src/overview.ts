@@ -37,6 +37,7 @@ export interface OpenTask {
   id: string;
   type: string;
   priority: "normal" | "urgent";
+  title: string | null;
   details: string | null;
   patient_name: string | null;
   created_at: Date;
@@ -75,7 +76,7 @@ export async function loadOverview(client: SqlClient, locationId: string): Promi
       [locationId],
     ),
     client.query<OpenTask>(
-      `SELECT t.id, t.type, t.priority, t.details, p.name AS patient_name, t.created_at
+      `SELECT t.id, t.type, t.priority, t.title, t.details, p.name AS patient_name, t.created_at
        FROM staff_tasks t LEFT JOIN patients p ON p.id = t.patient_id
        WHERE t.location_id = $1 AND t.status <> 'done'
        ORDER BY (t.priority = 'urgent') DESC, t.created_at

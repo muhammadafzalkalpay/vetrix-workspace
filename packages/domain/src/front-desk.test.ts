@@ -241,6 +241,15 @@ describe("triage during the conversation (W6)", () => {
     expect(summarizeConversation(state)).toBe("Emergency: Possible poisoning, staff asked to call now");
   });
 
+  it("uses the pet named in an emergency message", async () => {
+    const { port, log } = fakePort();
+    const c = ctx({ situation: { ...ctx().situation, open: false } });
+    const { last } = await talk(c, port, household, ["Lily just ate a lily from the vase"]);
+    expect(last).toContain("book Lily in");
+    expect(last).not.toMatch(/Is this for/);
+    expect(log.tasks[0]!.details).toContain("about Lily");
+  });
+
   it("stops a booking in progress when an emergency comes up", async () => {
     const { port, log } = fakePort();
     const { state } = await talk(ctx(), port, sam, ["book a nail trim", "oh no he just collapsed"]);
