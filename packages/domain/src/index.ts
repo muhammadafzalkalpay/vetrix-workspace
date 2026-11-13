@@ -16,3 +16,4 @@ export * from "./triage-ai";
 export * from "./messaging";
 export * from "./retention";
 export * from "./replies";
+export * from "./settings";

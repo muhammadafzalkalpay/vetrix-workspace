@@ -62,8 +62,7 @@ export const NAV: NavGroup[] = [
     items: [
       { href: "/reports", label: "Reports", icon: BarChart3, permission: "reports.view", keywords: ["numbers", "analytics"] },
       { href: "/team", label: "Team", icon: UserRoundCog, permission: "staff.manage", keywords: ["staff", "roles", "invite"] },
-      // Hidden until the settings screens are built.
-      { href: "/settings", label: "Settings", icon: Settings, permission: "settings.manage", keywords: ["hours", "services", "rooms"], hidden: true },
+      { href: "/settings", label: "Settings", icon: Settings, permission: "settings.manage", keywords: ["hours", "services", "holidays", "policies", "quiet hours"] },
     ],
   },
 ];

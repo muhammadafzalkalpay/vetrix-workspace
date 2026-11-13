@@ -19,3 +19,4 @@ export * from "./reports";
 export * from "./retention";
 export * from "./replies";
 export * from "./jobs";
+export * from "./settings";

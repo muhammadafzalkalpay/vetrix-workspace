@@ -28,7 +28,7 @@ interface PackRetention {
 const pack = () => getVeterinaryPack().retention as unknown as PackRetention;
 
 /** Rules the engine runs here (enabled for the location; heartworm, dental, series and win-back are not run yet). */
-const ENGINE_RULES = new Set(["annual_wellness", "senior_recheck", "vaccine_due", "parasite_prevention_refill", "post_surgery_recheck", "no_show_recovery"]);
+export const ENGINE_RULES = new Set(["annual_wellness", "senior_recheck", "vaccine_due", "parasite_prevention_refill", "post_surgery_recheck", "no_show_recovery"]);
 
 export async function loadRetentionInput(db: SqlClient, locationId: string, asOf: string): Promise<RetentionInput & { stopped: Set<string> }> {
   if (!ISO.test(asOf)) throw new ValidationError("Choose a date.");
