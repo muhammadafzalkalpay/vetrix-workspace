@@ -2,6 +2,8 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
   applyAssessment,
+  callerDownplays,
+  introducedPetNames,
   classifyByPhrases,
   decideTriageAction,
   initialTriage,
@@ -67,6 +69,46 @@ describe("classifyByPhrases", () => {
     expect(a.matches[0]!.triggerId).toBe("toxin_ingestion");
     const b = classifyByPhrases(rules, "Chocolate ate chocolate", { petNames: ["Chocolate"] });
     expect(b.level).toBe("emergency");
+  });
+});
+
+describe("pack regression checks (test-calls.md)", () => {
+  const level = (text: string, petNames: string[] = []) => classifyByPhrases(rules, text, { petNames });
+
+  it("keeps a pet called Lily routine, even when the caller introduces her in the same sentence", () => {
+    expect(level("My dog Lily needs her annual exam.").level).toBe("routine");
+    expect(introducedPetNames("my cat Lily and her name is Pepper, named Max")).toEqual(["Lily", "Max", "Pepper"]);
+    expect(level("Lily's annual exam please", ["Lily"]).level).toBe("routine");
+  });
+
+  it("does not hear a seizure in 'thanks for fitting us in'", () => {
+    expect(level("Thanks for fitting us in.").level).toBe("routine");
+    expect(level("can you fit Max in tomorrow").level).toBe("routine");
+    expect(level("he is fitting right now").level).toBe("emergency");
+  });
+
+  it("escalates an unclear possible poisoning", () => {
+    const a = level("I think he might have gotten into something in the garage, he's acting weird");
+    expect(a.level).toBe("emergency");
+    expect(a.matches[0]!.triggerId).toBe("toxin_ingestion");
+    expect(a.unsure).toBe(true);
+  });
+
+  it("matches by meaning across small wording changes (call 5 and call 6)", () => {
+    expect(level("My cat is in the litter box straining and crying and nothing is coming out.").matches[0]!.triggerId).toBe("urinary_blockage");
+    expect(level("his stomach looks swollen and he keeps trying to throw up but nothing comes out").matches[0]!.triggerId).toBe("bloat_gdv");
+    expect(level("Luna has been throwing up all day").matches[0]!.triggerId).toBe("repeated_vomiting");
+  });
+
+  it("does not make a lump urgent on its own (call 13), or a chocolate lab a poisoning", () => {
+    expect(level("My dog has a lump on his side, I want it removed.").level).toBe("routine");
+    expect(level("I have a chocolate lab who needs a checkup").level).toBe("routine");
+    expect(level("my dog ate chocolate").level).toBe("emergency");
+  });
+
+  it("recognises a caller playing it down (call 6)", () => {
+    expect(callerDownplays("But he's still wagging his tail so I think he's fine, can I just book for Friday?")).toBe(true);
+    expect(callerDownplays("he collapsed")).toBe(false);
   });
 });
 

@@ -57,23 +57,25 @@ async function oneDogOwner(db: SqlClient, loc: string) {
 }
 
 describe.skipIf(!url)("AI front desk on the clinic database", () => {
-  it("greets a known caller by name and books by text", () =>
+  it("verifies a known caller with a pet's name and books by text", () =>
     withRollback(async (pool, db, loc) => {
       const now = next(loc, 2, "10:00"); // Tuesday morning, open
       const owner = await oneDogOwner(db, loc.id);
       const start = await startFrontDesk(pool, { locationId: loc.id, channel: "sms", callerNumber: owner.mobile, sandbox: true }, now);
-      expect(start.replies[0]).toContain(`Hi ${owner.first_name}`);
-      const offer = await continueFrontDesk(pool, { locationId: loc.id, callId: start.callId, text: "Can I book a nail trim?" }, now);
+      expect(start.replies[0]).not.toContain(owner.first_name); // not verified yet
+      const verify = await continueFrontDesk(pool, { locationId: loc.id, callId: start.callId, text: "Can I book a nail trim?" }, now);
+      expect(verify.replies.join(" ")).toBe(`Is this ${owner.first_name}? And which of your pets is this about?`);
+      const offer = await continueFrontDesk(pool, { locationId: loc.id, callId: start.callId, text: `It's for ${owner.pet}` }, now);
       expect(offer.replies.join(" ")).toMatch(/Which works better|Does that work/);
       const booked = await continueFrontDesk(pool, { locationId: loc.id, callId: start.callId, text: "the first one" }, now);
-      expect(booked.replies.join(" ")).toContain(`${owner.pet} is booked`);
+      expect(booked.replies.join(" ")).toContain(`So that's ${owner.pet} for a nail trim`);
       const appt = await db.query<{ booked_by: string; status: string }>(
         `SELECT a.booked_by, a.status FROM appointments a JOIN calls k ON k.appointment_id = a.id WHERE k.id = $1`,
         [start.callId],
       );
       expect(appt.rows[0]).toEqual({ booked_by: "ai", status: "requested" });
       const call = await getCall(db, loc.id, start.callId);
-      expect(call.turns.map((t) => t.speaker)).toEqual(["ai", "caller", "ai", "caller", "ai", "ai"]);
+      expect(call.turns.filter((t) => t.speaker === "caller")).toHaveLength(3);
       expect(call.summary).toBe("Booked 1 visit");
       expect(call.sandbox).toBe(true);
     }), 180_000);
@@ -82,15 +84,18 @@ describe.skipIf(!url)("AI front desk on the clinic database", () => {
     withRollback(async (pool, db, loc) => {
       const now = next(loc, 3, "09:00");
       const s = await startFrontDesk(pool, { locationId: loc.id, channel: "voice", callerNumber: "+15555550987", sandbox: true }, now);
-      for (const text of ["I'd like to book a checkup", "My name is Jordan Rivera", "Biscuit", "a dog", "the first one"]) {
+      for (const text of ["I'd like to book a checkup", "My name is Jordan Rivera", "yes", "no", "yes please", "Biscuit", "a dog", "beagle", "3 years", "boy", "yes", "no", "the first one"]) {
         await continueFrontDesk(pool, { locationId: loc.id, callId: s.callId, text }, now);
       }
-      const client = await db.query<{ id: string; source: string }>(`SELECT id, source FROM clients WHERE location_id = $1 AND mobile = '+15555550987'`, [loc.id]);
-      expect(client.rows[0]!.source).toBe("phone_ai");
-      const pet = await db.query<{ provisional: boolean }>(`SELECT provisional FROM patients WHERE client_id = $1`, [client.rows[0]!.id]);
-      expect(pet.rows[0]!.provisional).toBe(true);
+      const client = await db.query<{ id: string; source: string; sms_consent: boolean; sms_consent_source: string }>(
+        `SELECT id, source, sms_consent, sms_consent_source FROM clients WHERE location_id = $1 AND mobile = '+15555550987'`,
+        [loc.id],
+      );
+      expect(client.rows[0]).toMatchObject({ source: "phone_ai", sms_consent: true, sms_consent_source: "phone_ai" });
+      const pet = await db.query(`SELECT provisional, breed, sex, neutered, approx_age_months FROM patients WHERE client_id = $1`, [client.rows[0]!.id]);
+      expect(pet.rows[0]).toMatchObject({ provisional: true, breed: "Beagle", sex: "male", neutered: true, approx_age_months: 36 });
       const call = await getCall(db, loc.id, s.callId);
-      expect(call.tasks.map((t) => t.type)).toContain("records_request");
+      expect(call.tasks.map((t) => t.type)).not.toContain("records_transfer"); // no previous clinic named
       expect(call.appointment_id).not.toBeNull();
       expect(call.client_name).toBe("Jordan Rivera");
     }), 180_000);

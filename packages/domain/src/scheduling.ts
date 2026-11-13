@@ -86,6 +86,10 @@ export interface PatientForBooking {
   approxAgeMonths: number | null;
   temperamentFlags: TemperamentFlag[];
   activePrescriptions?: boolean;
+  /** Clinical history for prerequisites, YYYY-MM-DD. Unknown (undefined) leaves the check to staff. */
+  lastWellnessExamAt?: string | null;
+  lastCompletedVisitAt?: string | null;
+  lastSurgeryAt?: string | null;
 }
 
 export interface Slot {
@@ -142,8 +146,24 @@ export function checkEligibility(service: ServiceRules, patient: PatientForBooki
     warnings.push({ ruleId: "prereq.prescription", message: "No active prescription is on file for this injection." });
   }
   if (p.doctor_ordered === true) warnings.push({ ruleId: "prereq.doctor_ordered", message: "A doctor must have ordered this." });
-  for (const key of ["completed_visit_within_days", "wellness_exam_within_months", "surgery_within_days"]) {
-    if (p[key] !== undefined) warnings.push({ ruleId: `prereq.${key}`, message: prerequisiteMessage(key, p[key]) });
+  // History prerequisites: checked against the record. Met: nothing to say.
+  // Not met or unknown: a warning, so staff (or the doctor) may still book;
+  // the AI treats warnings as blocking and uses the pack's fallback service.
+  const history: [string, "lastCompletedVisitAt" | "lastWellnessExamAt" | "lastSurgeryAt", (v: number) => number][] = [
+    ["completed_visit_within_days", "lastCompletedVisitAt", (v) => v],
+    ["wellness_exam_within_months", "lastWellnessExamAt", (v) => v * 30.44],
+    ["surgery_within_days", "lastSurgeryAt", (v) => v],
+  ];
+  for (const [key, field, toDays] of history) {
+    const limit = p[key];
+    if (typeof limit !== "number") continue;
+    const last = patient[field];
+    if (last === undefined) {
+      warnings.push({ ruleId: `prereq.${key}`, message: prerequisiteMessage(key, limit) });
+      continue;
+    }
+    const days = last ? (Date.parse(`${today}T00:00:00Z`) - Date.parse(`${last}T00:00:00Z`)) / 86_400_000 : Infinity;
+    if (!(days <= toDays(limit))) warnings.push({ ruleId: `prereq.${key}`, message: prerequisiteMessage(key, limit) });
   }
   return { blocking, warnings };
 }

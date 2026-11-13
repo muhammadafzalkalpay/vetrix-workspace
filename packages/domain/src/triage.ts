@@ -87,9 +87,11 @@ export function maskPetNames(normalized: string, petNames: readonly string[]): s
         out = out.replace(form, ` \u0000${kept.length - 1}\u0000 `);
       }
     }
-    out = out.split(` ${name} `).join(" pet ");
-    // split/join misses back-to-back repeats ("name name"); run once more.
-    out = out.split(` ${name} `).join(" pet ");
+    for (let i = 0; i < 2; i++) {
+      // Twice: split/join misses back-to-back repeats ("name name").
+      out = out.split(` ${name} `).join(" pet ");
+      out = out.split(` ${name}s `).join(" pets "); // possessive: "Lily's"
+    }
     out = out.replace(/ ?\u0000(\d+)\u0000 ?/g, (_, i: string) => kept[Number(i)]!);
   }
   return out;
@@ -100,47 +102,130 @@ export function maskPetNames(normalized: string, petNames: readonly string[]): s
 // escalate). The Azure classifier replaces this with real understanding.
 const EMERGENCY_CUES = ["emergency", "dying", "not breathing", "stopped breathing", "isnt breathing", "barely breathing", "having a fit"];
 const CONCERN_CUES = [
-  "bleeding", "blood", "bloody", "vomit", "vomiting", "vomited", "throwing up", "threw up", "diarrhea", "diarrhoea",
+  "bleeding", "blood", "bloody", "vomit", "vomiting", "vomited", "diarrhea", "diarrhoea",
   "pain", "hurt", "hurts", "hurting", "injured", "injury", "limping", "swollen", "swelling", "not eating", "wont eat",
-  "lethargic", "weak", "collapsed", "shaking", "trembling", "lump",
+  "lethargic", "weak", "collapsed", "shaking", "trembling", "acting weird", "acting strange", "not acting right",
+];
+// Possible ingestion of something unknown: pack regression "say something
+// unclear about a possible poisoning, the AI must escalate".
+const INGESTION_CUES = [
+  "gotten into", "got into something", "got into the", "get into something", "ate something", "eaten something",
+  "might have eaten", "may have eaten", "swallowed", "chewed something", "chewed up", "licked something", "into the trash",
+  "into the garbage", "into the medicine", "into my pills", "into the pills",
 ];
 
-function containsPhrase(normalizedText: string, phrase: string): boolean {
-  const p = normalizeUtterance(phrase);
-  return p.trim().length > 0 && normalizedText.includes(p);
+// Same meaning, different words: both the caller's text and the pack phrases
+// are rewritten this way before comparing.
+const SYNONYMS: [RegExp, string][] = [
+  [/ throwing up /g, " vomiting "],
+  [/ throw up /g, " vomit "],
+  [/ threw up /g, " vomited "],
+  [/ thrown up /g, " vomited "],
+  [/ puking /g, " vomiting "],
+  [/ puke /g, " vomit "],
+  [/ tummy /g, " belly "],
+  [/ stomach /g, " belly "],
+  [/ abdomen /g, " belly "],
+  [/ cannot /g, " cant "],
+  [/ can not /g, " cant "],
+  [/ will not /g, " wont "],
+];
+// Small words that change nothing about urgency ("nothing IS coming out").
+const FILLER = new Set(["is", "are", "was", "were", "be", "the", "a", "an", "just", "really", "so", "very", "all", "my", "his", "her", "our", "their", "its", "of", "keeps", "keep", "kept"]);
+
+/** Normalized, synonyms applied, filler words removed: " nothing coming out ". */
+export function canonicalUtterance(text: string): string {
+  let n = text.startsWith(" ") && text.endsWith(" ") ? text : normalizeUtterance(text);
+  for (const [re, to] of SYNONYMS) n = n.replace(re, to);
+  return ` ${n.trim().split(" ").filter((w) => w && !FILLER.has(w)).join(" ")} `;
+}
+
+// Everyday phrases that contain a trigger word but are not symptoms.
+const BENIGN: RegExp[] = [
+  / fit(?:ting|s)? (?:\w+ ){0,2}in /g, // "thanks for fitting us in"
+  / chocolate lab(?:rador)?s? /g, // a dog's colour, not food
+  / seizure (?:meds|medicine|medication|medications|pills|tablets) /g,
+  / kennel cough (?:vaccine|vaccination|shot|booster) /g,
+  / lily (?:pad|of the valley pad) /g,
+];
+
+function stripBenign(normalized: string): string {
+  let out = normalized;
+  for (const re of BENIGN) out = out.replace(re, " ");
+  return out.replace(/ {2,}/g, " ");
+}
+
+function containsPhrase(canonicalText: string, phrase: string): boolean {
+  const p = canonicalUtterance(phrase);
+  return p.trim().length > 0 && canonicalText.includes(p);
+}
+
+/**
+ * Pet names the caller introduces in the same breath ("my dog Lily", "his
+ * name is Max", "named Chocolate"), so they are masked like known names.
+ */
+export function introducedPetNames(text: string): string[] {
+  const out = new Set<string>();
+  // "my dog Lily": the name must be capitalised, so "my dog barks" is not a name.
+  for (const m of text.matchAll(/\b(?:my|our|the)\s+(?:dog|cat|puppy|kitten|pup|kitty|bunny|rabbit|bird|boy|girl|pet)\s+([a-zA-Z][a-zA-Z'-]+)/gi)) {
+    if (m[1] && /^[A-Z]/.test(m[1])) out.add(m[1]);
+  }
+  for (const m of text.matchAll(/\b(?:named|called)\s+([A-Za-z][a-zA-Z'-]+)/gi)) if (m[1]) out.add(m[1]);
+  for (const m of text.matchAll(/\b(?:his|her|its|their)\s+name\s+is\s+([A-Za-z][a-zA-Z'-]+)/gi)) if (m[1]) out.add(m[1]);
+  return [...out];
 }
 
 /**
  * The sandbox AI's classifier: pack phrases (by whole words, ignoring
- * apostrophes and case) first, then broad cues that escalate when unsure.
+ * apostrophes, case, filler words and common synonyms) first, then broad
+ * cues that escalate when unsure.
  */
 export function classifyByPhrases(rules: TriageRules, text: string, context: { petNames?: readonly string[] } = {}): TriageAssessment {
   let normalized = normalizeUtterance(text);
-  if (rules.classification.exclude_known_pet_names && context.petNames?.length) {
-    normalized = maskPetNames(normalized, context.petNames);
+  const names = [...(context.petNames ?? []), ...introducedPetNames(text)];
+  if (rules.classification.exclude_known_pet_names && names.length) {
+    normalized = maskPetNames(normalized, names);
   }
+  const canonical = canonicalUtterance(stripBenign(normalized));
   const matches: TriageMatch[] = [];
   const scan = (triggers: TriageTrigger[], level: TriageMatch["level"]) => {
     for (const t of triggers) {
-      const phrase = t.phrases.find((p) => containsPhrase(normalized, p));
+      const phrase = t.phrases.find((p) => containsPhrase(canonical, p));
       if (phrase) matches.push({ level, triggerId: t.id, triggerName: t.name, evidence: phrase });
     }
   };
   scan(rules.emergency_triggers, "emergency");
   scan(rules.urgent_triggers, "urgent");
+  const ingestion = INGESTION_CUES.find((c) => containsPhrase(canonical, c));
+  if (ingestion && !matches.some((m) => m.triggerId === "toxin_ingestion")) {
+    const toxin = rules.emergency_triggers.find((t) => t.id === "toxin_ingestion");
+    matches.unshift({ level: "emergency", triggerId: toxin?.id ?? UNCLASSIFIED_EMERGENCY, triggerName: toxin?.name ?? "Possible poisoning", evidence: ingestion });
+  }
   if (matches.length > 0) {
     const level = matches.some((m) => m.level === "emergency") ? "emergency" : "urgent";
-    return { level, matches, unsure: false };
+    matches.sort((a, b) => (a.level === b.level ? 0 : a.level === "emergency" ? -1 : 1));
+    return { level, matches, unsure: Boolean(ingestion) };
   }
-  const emergencyCue = EMERGENCY_CUES.find((c) => containsPhrase(normalized, c));
+  const emergencyCue = EMERGENCY_CUES.find((c) => containsPhrase(canonical, c));
   if (emergencyCue) {
     return { level: "emergency", unsure: true, matches: [{ level: "emergency", triggerId: UNCLASSIFIED_EMERGENCY, triggerName: "Caller describes an emergency", evidence: emergencyCue }] };
   }
-  const concernCue = CONCERN_CUES.find((c) => containsPhrase(normalized, c));
+  const concernCue = CONCERN_CUES.find((c) => containsPhrase(canonical, c));
   if (concernCue) {
     return { level: "urgent", unsure: true, matches: [{ level: "urgent", triggerId: UNCLASSIFIED_CONCERN, triggerName: "Possible illness or injury", evidence: concernCue }] };
   }
   return { level: "routine", matches: [], unsure: false };
+}
+
+const DOWNPLAY = [
+  "think hes fine", "think shes fine", "think its fine", "hes fine", "shes fine", "seems fine", "probably fine", "not that bad",
+  "not so bad", "still wagging", "still eating", "can wait", "ill wait", "wait till", "wait until", "just book", "no big deal",
+];
+
+/** The caller plays down what they described (pack script caller_downplays). */
+export function callerDownplays(text: string): boolean {
+  const n = normalizeUtterance(text);
+  return DOWNPLAY.some((d) => n.includes(` ${d} `) || n.includes(` ${d}`));
 }
 
 // ---------- Call state ----------

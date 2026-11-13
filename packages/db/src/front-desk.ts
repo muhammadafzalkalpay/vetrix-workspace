@@ -26,15 +26,19 @@ import {
   type ConversationState,
   type FrontDeskContext,
   type FrontDeskPort,
+  type Hold,
+  type IntakeRules,
+  type NewPetInput,
   type PetRef,
+  type SlotOffer,
   type ServiceInfo,
   type Species,
   type TriageAssessment,
   type TriageLevel,
 } from "@vetrix/domain";
 import { getVeterinaryPack } from "@vetrix/pack";
-import { bookAppointment, loadPatientForBooking, loadSchedulingData, loadService } from "./booking";
-import { createClient, createPatient, withTransaction, type Actor, type TransactionPool } from "./clients";
+import { bookAppointment, cancelAppointment, loadPatientForBooking, loadSchedulingData, loadService, rescheduleAppointment } from "./booking";
+import { createClient, createPatient, markPatientDeceased, withTransaction, type Actor, type TransactionPool } from "./clients";
 import type { SqlClient } from "./sql-client";
 
 const AI: Actor = { type: "ai", id: null };
@@ -63,6 +67,11 @@ function packServices(): Record<string, ServiceInfo> {
       aiHandling: (raw.ai_handling as string | undefined) ?? null,
       fallbackServiceId: (raw.fallback_service_if_prerequisite_fails as string | undefined) ?? null,
       fallbackScript: (raw.fallback_script as string | undefined) ?? null,
+      controlledScript: (raw.controlled_substance_script as string | undefined) ?? null,
+      fastingRequired: raw.fasting_required === true,
+      requiresPreop: raw.requires_preop_bloodwork === true,
+      dropOffWindow: (raw.drop_off_window as string | undefined) ?? null,
+      whatToBring: (raw.what_to_bring as string[] | undefined) ?? [],
     };
   }
   return out;
@@ -73,10 +82,11 @@ async function loadSetup(db: SqlClient, locationId: string, now: number): Promis
     db.query<{
       name: string; timezone: string; main_phone: string | null; ai_persona_name: string | null; emergency_transfer_number: string | null;
       er_name: string | null; er_phone: string | null; er_address: string | null; behaviour: "er_only" | "er_and_book_next" | null;
-      refill_turnaround: string | null;
+      refill_turnaround: string | null; cancellation_window_hours: number | null; cancellation_fee: string | null;
     }>(
       `SELECT l.name, l.timezone, l.main_phone, ps.ai_persona_name, ps.emergency_transfer_number,
-              ah.er_name, ah.er_phone, ah.er_address, ah.behaviour, lp.refill_turnaround
+              ah.er_name, ah.er_phone, ah.er_address, ah.behaviour, lp.refill_turnaround,
+              lp.cancellation_window_hours, lp.cancellation_fee
        FROM locations l
        LEFT JOIN location_phone_settings ps ON ps.location_id = l.id
        LEFT JOIN location_after_hours ah ON ah.location_id = l.id
@@ -118,28 +128,42 @@ async function loadSetup(db: SqlClient, locationId: string, now: number): Promis
       },
       hoursText: describeHours(hours.rows),
       refillTurnaround: l.refill_turnaround ?? "a day or two",
+      intake: (getVeterinaryPack().intake as unknown as { reason_for_visit: IntakeRules }).reason_for_visit,
+      whatToBringPhrases: (getVeterinaryPack().intake as unknown as { what_to_bring_phrases: Record<string, string> }).what_to_bring_phrases ?? {},
+      policy: {
+        cancellationWindowHours: l.cancellation_window_hours ?? 24,
+        cancellationFee: l.cancellation_fee === null ? null : Number(l.cancellation_fee),
+      },
     },
   };
 }
 
 /** The client whose mobile matches, with their active pets. */
 export async function findCaller(db: SqlClient, locationId: string, mobile: string, today: string): Promise<CallerRecord | null> {
-  const client = await db.query<{ id: string; first_name: string }>(
-    `SELECT id, first_name FROM clients WHERE location_id = $1 AND mobile = $2`,
+  const client = await db.query<{ id: string; first_name: string; sms_consent: boolean }>(
+    `SELECT id, first_name, sms_consent FROM clients WHERE location_id = $1 AND mobile = $2`,
     [locationId, mobile],
   );
   const c = client.rows[0];
   if (!c) return null;
-  return { clientId: c.id, firstName: c.first_name, pets: await petsOf(db, locationId, c.id, today) };
+  return { clientId: c.id, firstName: c.first_name, smsConsent: c.sms_consent, pets: await petsOf(db, locationId, c.id, today) };
 }
 
 async function petsOf(db: SqlClient, locationId: string, clientId: string, today: string): Promise<PetRef[]> {
-  const { rows } = await db.query<{ id: string; name: string; species: Species; dob: string | null; approx_age_months: number | null }>(
-    `SELECT id, name, species, to_char(date_of_birth, 'YYYY-MM-DD') AS dob, approx_age_months
-     FROM patients WHERE location_id = $1 AND client_id = $2 AND status = 'active' ORDER BY name`,
+  // Deceased pets are included so a caller can tell us; they are never offered for booking.
+  const { rows } = await db.query<{
+    id: string; name: string; species: Species; dob: string | null; approx_age_months: number | null;
+    sex: "male" | "female" | null; neutered: boolean | null; status: "active" | "deceased"; flags: string[];
+  }>(
+    `SELECT p.id, p.name, p.species, to_char(p.date_of_birth, 'YYYY-MM-DD') AS dob, p.approx_age_months, p.sex, p.neutered, p.status,
+            coalesce((SELECT array_agg(flag) FROM patient_temperament_flags WHERE patient_id = p.id), '{}') AS flags
+     FROM patients p WHERE p.location_id = $1 AND p.client_id = $2 AND p.status IN ('active', 'deceased') ORDER BY p.name`,
     [locationId, clientId],
   );
-  return rows.map((p) => ({ id: p.id, name: p.name, species: p.species, ageMonths: ageInMonths({ dateOfBirth: p.dob, approxAgeMonths: p.approx_age_months }, today) }));
+  return rows.map((p) => ({
+    id: p.id, name: p.name, species: p.species, sex: p.sex, neutered: p.neutered, status: p.status, flags: p.flags,
+    ageMonths: ageInMonths({ dateOfBirth: p.dob, approxAgeMonths: p.approx_age_months }, today),
+  }));
 }
 
 // ---------- The port ----------
@@ -182,6 +206,64 @@ function createPort(
 
   const serviceRow = (packServiceId: string) => setup.serviceIds.get(packServiceId) ?? null;
 
+  const insertPet = async (clientId: string, p: NewPetInput): Promise<PetRef> => {
+    const patient = validatePatient(
+      { name: p.name, species: p.species, breed: p.breed, sex: p.sex, neutered: p.neutered, approxAgeMonths: p.ageMonths, temperamentFlags: p.flags },
+      setup.today,
+    );
+    const id = await createPatient(db, { locationId, clientId, patient, actor: AI, provisional: true });
+    return { id, name: patient.name, species: patient.species, ageMonths: p.ageMonths, sex: patient.sex, neutered: patient.neutered, flags: patient.temperamentFlags, isNew: true };
+  };
+
+  const bookOne = (patientId: string, serviceId: string, slot: SlotOffer, reason: string | null, triageLevel: TriageLevel) =>
+    bookAppointment(db, {
+      locationId,
+      patientId,
+      serviceId,
+      start: slot.start,
+      providerId: slot.providerId,
+      bookedBy: "ai",
+      actor: AI,
+      reasonText: reason,
+      triageLevel,
+      today: setup.today,
+      strict: true,
+    });
+
+  const providerName = async (providerId: string) =>
+    (await db.query<{ name: string }>(`SELECT display_name AS name FROM providers WHERE id = $1 AND location_id = $2`, [providerId, locationId])).rows[0]?.name ?? "the doctor";
+
+  /** resources.json preop_bloodwork_valid_days: completed pre-op bloodwork within that many days. */
+  const preopStillValid = async (patientId: string) => {
+    const days = (getVeterinaryPack().resources.scheduling_rules as { preop_bloodwork_valid_days?: number }).preop_bloodwork_valid_days ?? 30;
+    const { rows } = await db.query(
+      `SELECT 1 FROM appointments a JOIN services s ON s.id = a.service_id
+       WHERE a.patient_id = $1 AND a.location_id = $2 AND s.pack_service_id = 'preop_bloodwork' AND a.status = 'completed'
+         AND a.start_at > $3::timestamptz - make_interval(days => $4)`,
+      [patientId, locationId, new Date(setup.ctx.now), days],
+    );
+    return rows.length > 0;
+  };
+
+  /** Books pre-op bloodwork as late as possible before the procedure (same morning or earlier, within a week). */
+  const bookPreop = async (patientId: string, procedureStart: number, reason: string | null): Promise<number> => {
+    const serviceId = serviceRow("preop_bloodwork");
+    if (!serviceId) throw new ConflictError("Pre-op bloodwork is not set up at this clinic, so the team will book this procedure with you.");
+    const from = localParts(Math.max(setup.ctx.now, procedureStart - 7 * 86_400_000), setup.ctx.timezone).date;
+    const days = Math.max(1, Math.round((procedureStart - Date.parse(`${from}T00:00:00Z`)) / 86_400_000) + 2);
+    const [service, patient, data] = await Promise.all([
+      loadService(db, locationId, serviceId),
+      loadPatientForBooking(db, locationId, patientId),
+      loadSchedulingData(db, locationId, from, days),
+    ]);
+    const options = findSlots(data, { service, patient, dates: dateRange(from, days), notBefore: setup.ctx.now + LEAD_MS, limit: 2000 }).filter((x) => x.end <= procedureStart);
+    const last = options.at(-1);
+    if (!last) throw new ConflictError("There's no time for the pre-op bloodwork before that date. Let me find a later one.");
+    await bookOne(patientId, serviceId, { start: last.start, end: last.end, providerId: last.providerId }, reason ? `Pre-op bloodwork. ${reason}` : "Pre-op bloodwork", "routine");
+    out.notes.push(`${label}Pre-op bloodwork booked before the procedure.`);
+    return last.start;
+  };
+
   return {
     async classify(text, petNames) {
       return (input.classify ?? sandboxClassifier)(text, petNames);
@@ -193,7 +275,7 @@ function createPort(
       const [service, patient, data] = await Promise.all([
         loadService(db, locationId, serviceId),
         loadPatientForBooking(db, locationId, req.patientId),
-        loadSchedulingData(db, locationId, setup.today, req.withinDays),
+        loadSchedulingData(db, locationId, setup.today, req.withinDays, { excludeAppointmentId: req.excludeAppointmentId }),
       ]);
       // The AI books only when nothing needs a staff decision (pack: strict for AI bookings).
       const eligibility = checkEligibility(service, patient, setup.today);
@@ -204,55 +286,162 @@ function createPort(
       return { slots: offerTwo(all, setup.ctx.timezone).map((s) => ({ start: s.start, end: s.end, providerId: s.providerId })), blocked: null };
     },
 
+    async findGroupSlots(req) {
+      const ids = req.items.map((i) => serviceRow(i.packServiceId));
+      if (ids.some((x) => !x)) return { groups: [], blocked: "We don't offer that at this clinic." };
+      const [data, ...loaded] = await Promise.all([
+        loadSchedulingData(db, locationId, setup.today, req.withinDays),
+        ...req.items.map((it, i) => Promise.all([loadService(db, locationId, ids[i]!), loadPatientForBooking(db, locationId, it.patientId)])),
+      ]);
+      for (const [service, patient] of loaded) {
+        const e = checkEligibility(service, patient, setup.today);
+        const b = [...e.blocking, ...e.warnings][0];
+        if (b) return { groups: [], blocked: `${patient.name}: ${b.message}` };
+      }
+      const notBefore = Math.max(setup.ctx.now + LEAD_MS, (req.after ?? 0) + 1);
+      const dates = dateRange(setup.today, req.withinDays);
+      const holdsOf = (sl: { providerId: string; roomId: string | null; equipmentIds: string[]; holdStart: number; holdEnd: number }): Hold[] => [
+        { providerId: sl.providerId, start: sl.holdStart, end: sl.holdEnd },
+        ...(sl.roomId ? [{ roomId: sl.roomId, start: sl.holdStart, end: sl.holdEnd }] : []),
+        ...sl.equipmentIds.map((equipmentId) => ({ equipmentId, start: sl.holdStart, end: sl.holdEnd })),
+      ];
+      // Back to back: each next pet starts within 15 minutes of the previous one, same provider preferred.
+      const groups: SlotOffer[][] = [];
+      const firsts = findSlots(data, { service: loaded[0]![0], patient: loaded[0]![1], dates, notBefore, limit: 120 });
+      for (const first of firsts) {
+        let holds = [...data.holds, ...holdsOf(first)];
+        const chain = [first];
+        for (let i = 1; i < loaded.length; i++) {
+          const prev = chain.at(-1)!;
+          const day = localParts(prev.start, setup.ctx.timezone).date;
+          const tryWith = (providerId?: string) =>
+            findSlots({ ...data, holds }, { service: loaded[i]![0], patient: loaded[i]![1], dates: [day], notBefore: prev.end, providerId, limit: 5 }).find((x) => x.start - prev.end <= 15 * 60_000);
+          const next = tryWith(prev.providerId) ?? tryWith();
+          if (!next) break;
+          chain.push(next);
+          holds = [...holds, ...holdsOf(next)];
+        }
+        if (chain.length === loaded.length) groups.push(chain.map((c) => ({ start: c.start, end: c.end, providerId: c.providerId })));
+        if (groups.length >= 12) break;
+      }
+      const picked = offerTwo(groups.map((g) => ({ ...g[0]!, holdStart: g[0]!.start, holdEnd: g[0]!.end, roomId: null, equipmentIds: [] })), setup.ctx.timezone);
+      return { groups: picked.map((p) => groups.find((g) => g[0]!.start === p.start && g[0]!.providerId === p.providerId)!), blocked: null };
+    },
+
     async book(req) {
       const serviceId = serviceRow(req.packServiceId);
       if (!serviceId) throw new ConflictError("That service is not offered here.");
-      // A savepoint keeps the turn's transaction usable if the slot was just taken.
+      // A savepoint keeps the turn's transaction usable if the slot was just taken,
+      // and makes the procedure and its pre-op bloodwork one step (both or neither).
       await db.query("SAVEPOINT ai_book");
       try {
-        const result = await bookAppointment(db, {
-          locationId,
-          patientId: req.patientId,
-          serviceId,
-          start: req.slot.start,
-          providerId: req.slot.providerId,
-          bookedBy: "ai",
-          actor: AI,
-          reasonText: req.reason,
-          triageLevel: req.triageLevel,
-          today: setup.today,
-          strict: true,
-        });
+        const result = await bookOne(req.patientId, serviceId, req.slot, req.reason, req.triageLevel);
+        let preopStart: number | null = null;
+        let preopValid = false;
+        if (req.preop) {
+          preopValid = await preopStillValid(req.patientId);
+          if (preopValid) {
+            await db.query(`UPDATE appointments SET preop_bloodwork_valid = true WHERE id = $1`, [result.appointmentId]);
+          } else {
+            preopStart = await bookPreop(req.patientId, req.slot.start, req.reason);
+          }
+        }
         await db.query("RELEASE SAVEPOINT ai_book");
         await db.query(`UPDATE calls SET appointment_id = $2 WHERE id = $1`, [callId, result.appointmentId]);
-        return { appointmentId: result.appointmentId };
+        return { appointmentId: result.appointmentId, providerName: await providerName(result.slot.providerId), preopStart, preopValid };
       } catch (error) {
         await db.query("ROLLBACK TO SAVEPOINT ai_book");
         throw error;
       }
     },
 
+    async bookGroup(req) {
+      await db.query("SAVEPOINT ai_book");
+      try {
+        const ids: string[] = [];
+        const names: string[] = [];
+        for (const it of req.items) {
+          const serviceId = serviceRow(it.packServiceId);
+          if (!serviceId) throw new ConflictError("That service is not offered here.");
+          const r = await bookOne(it.patientId, serviceId, it.slot, req.reason, req.triageLevel);
+          ids.push(r.appointmentId);
+          names.push(await providerName(r.slot.providerId));
+        }
+        await db.query("RELEASE SAVEPOINT ai_book");
+        await db.query(`UPDATE calls SET appointment_id = $2 WHERE id = $1`, [callId, ids[0]]);
+        return { appointmentIds: ids, providerNames: names };
+      } catch (error) {
+        await db.query("ROLLBACK TO SAVEPOINT ai_book");
+        throw error;
+      }
+    },
+
+    async upcoming(req) {
+      const { rows } = await db.query<{ id: string; patient_id: string; pack_service_id: string; start_at: Date }>(
+        `SELECT a.id, a.patient_id, s.pack_service_id, a.start_at FROM appointments a JOIN services s ON s.id = a.service_id
+         WHERE a.location_id = $1 AND a.client_id = $2 AND a.status IN ('requested', 'confirmed') AND a.start_at > $3
+         ORDER BY a.start_at`,
+        [locationId, req.clientId, new Date(setup.ctx.now)],
+      );
+      return rows.map((r) => ({ appointmentId: r.id, patientId: r.patient_id, packServiceId: r.pack_service_id, start: r.start_at.getTime() }));
+    },
+
+    async reschedule(req) {
+      await db.query("SAVEPOINT ai_book");
+      try {
+        const r = await rescheduleAppointment(db, { locationId, appointmentId: req.appointmentId, start: req.slot.start, providerId: req.slot.providerId, actor: AI, today: setup.today });
+        await db.query("RELEASE SAVEPOINT ai_book");
+        await db.query(`UPDATE calls SET appointment_id = $2 WHERE id = $1`, [callId, r.appointmentId]);
+        return { appointmentId: r.appointmentId, providerName: await providerName(r.slot.providerId) };
+      } catch (error) {
+        await db.query("ROLLBACK TO SAVEPOINT ai_book");
+        throw error;
+      }
+    },
+
+    async cancel(req) {
+      await cancelAppointment(db, { locationId, appointmentId: req.appointmentId, reason: req.reason, actor: AI, lateCancel: req.lateCancel });
+      out.notes.push(`${label}Visit cancelled${req.lateCancel ? " (late cancellation)" : ""}.`);
+    },
+
+    async markDeceased(req) {
+      await markPatientDeceased(db, {
+        locationId,
+        patientId: req.patientId,
+        confirmation: { confirmedName: req.confirmedName, confirmedSpecies: req.confirmedSpecies, deathConfirmed: true, deceasedDate: setup.today },
+        today: setup.today,
+        actor: AI,
+      });
+      out.notes.push(`${label}${req.confirmedName} marked deceased; reminders stopped.`);
+    },
+
     async createCaller(req) {
-      const client = validateClient({ firstName: req.firstName, lastName: req.lastName, mobile: req.mobile, preferredChannel: "sms" });
+      const client = validateClient({
+        firstName: req.firstName,
+        lastName: req.lastName,
+        mobile: req.mobile,
+        email: req.email,
+        preferredChannel: "sms",
+        smsConsent: req.smsConsent,
+      });
+      // Consent captured on this call: stored with its time and source (phone_ai).
       const clientId = await createClient(db, { locationId, client, source: "phone_ai", actor: AI });
-      const patient = validatePatient({ name: req.pet.name, species: req.pet.species }, setup.today);
-      const petId = await createPatient(db, { locationId, clientId, patient, actor: AI, provisional: true });
-      out.notes.push(`${label}New client ${client.firstName} ${client.lastName} and pet ${patient.name} added (provisional).`);
-      return { clientId, firstName: client.firstName, pets: [{ id: petId, name: patient.name, species: patient.species, ageMonths: null }] };
+      const pet = await insertPet(clientId, req.pet);
+      out.notes.push(`${label}New client ${client.firstName} ${client.lastName} and pet ${pet.name} added (provisional). Texts ${client.smsConsent ? "allowed" : "not allowed"}.`);
+      return { clientId, firstName: client.firstName, smsConsent: client.smsConsent, pets: [pet] };
     },
 
     async addPet(req) {
-      const patient = validatePatient({ name: req.name, species: req.species }, setup.today);
-      const id = await createPatient(db, { locationId, clientId: req.clientId, patient, actor: AI, provisional: true });
-      out.notes.push(`${label}New pet ${patient.name} added (provisional).`);
-      return { id, name: patient.name, species: patient.species, ageMonths: null };
+      const pet = await insertPet(req.clientId, req.pet);
+      out.notes.push(`${label}New pet ${pet.name} added (provisional).`);
+      return pet;
     },
 
     async createTask(t) {
       await db.query(
-        `INSERT INTO staff_tasks (location_id, call_id, client_id, patient_id, type, priority, title, details)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-        [locationId, callId, t.clientId, t.patientId, t.type, t.priority, t.title.slice(0, 200), t.details.slice(0, 2000)],
+        `INSERT INTO staff_tasks (location_id, call_id, client_id, patient_id, type, priority, title, details, controlled_substance)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+        [locationId, callId, t.clientId, t.patientId, t.type, t.priority, t.title.slice(0, 200), t.details.slice(0, 2000), t.controlled ?? false],
       );
       out.notes.push(`${t.priority === "urgent" ? "Urgent staff task" : "Staff task"}: ${t.title}`);
     },

@@ -185,6 +185,19 @@ describe("eligibility", () => {
     expect(checkEligibility(puppy, dog, DAY).blocking).toHaveLength(1);
   });
 
+  it("checks visit-history prerequisites against the record (test calls 8, 9 and 12)", () => {
+    const booster = service({ name: "Vaccine booster", prerequisites: { wellness_exam_within_months: 12 } });
+    const dental = service({ name: "Dental cleaning", prerequisites: { completed_visit_within_days: 90 } });
+    const today = "2026-11-13";
+    expect(checkEligibility(booster, { ...dog, lastWellnessExamAt: "2025-11-29" }, today)).toEqual({ blocking: [], warnings: [] });
+    // Not met: a warning, so staff can still book; the AI treats it as blocking and falls back.
+    expect(checkEligibility(booster, { ...dog, lastWellnessExamAt: "2025-08-23" }, today)).toEqual({ blocking: [], warnings: [expect.objectContaining({ ruleId: "prereq.wellness_exam_within_months" })] });
+    expect(checkEligibility(booster, { ...dog, lastWellnessExamAt: null }, today).warnings).toHaveLength(1);
+    expect(checkEligibility(dental, { ...dog, lastCompletedVisitAt: "2026-06-01" }, today).warnings).toHaveLength(1);
+    // Unknown history (not loaded) stays a warning for staff.
+    expect(checkEligibility(booster, dog, today).warnings[0]!.ruleId).toBe("prereq.wellness_exam_within_months");
+  });
+
   it("turns clinical history needs into warnings for staff", () => {
     const xray = service({ name: "Radiographs", prerequisites: { doctor_ordered: true } });
     expect(checkEligibility(xray, dog, DAY)).toEqual({ blocking: [], warnings: [expect.objectContaining({ ruleId: "prereq.doctor_ordered" })] });

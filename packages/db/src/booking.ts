@@ -107,9 +107,16 @@ export async function loadPatientForBooking(
   const { rows } = await db.query<{
     id: string; name: string; client_id: string; status: string; species: Species; sex: "male" | "female" | null; neutered: boolean | null;
     date_of_birth: string | null; approx_age_months: number | null; active_prescriptions: boolean; flags: TemperamentFlag[];
+    last_wellness: string | null; last_visit: string | null; last_surgery: string | null;
   }>(
     `SELECT p.id, p.name, p.client_id, p.status, p.species, p.sex, p.neutered, to_char(p.date_of_birth, 'YYYY-MM-DD') AS date_of_birth,
             p.approx_age_months, p.active_prescriptions,
+            to_char(greatest(p.last_wellness_exam_at, (SELECT max(a.start_at)::date FROM appointments a JOIN services s ON s.id = a.service_id
+               WHERE a.patient_id = p.id AND a.status = 'completed' AND s.pack_service_id IN ('wellness_exam', 'wellness_exam_new', 'senior_wellness', 'puppy_kitten_visit'))), 'YYYY-MM-DD') AS last_wellness,
+            to_char(greatest(p.last_wellness_exam_at, p.last_dental_at, p.last_surgery_at,
+               (SELECT max(a.start_at)::date FROM appointments a WHERE a.patient_id = p.id AND a.status = 'completed')), 'YYYY-MM-DD') AS last_visit,
+            to_char(greatest(p.last_surgery_at, (SELECT max(a.start_at)::date FROM appointments a JOIN services s ON s.id = a.service_id
+               WHERE a.patient_id = p.id AND a.status = 'completed' AND s.category = 'surgery')), 'YYYY-MM-DD') AS last_surgery,
             coalesce((SELECT array_agg(flag) FROM patient_temperament_flags WHERE patient_id = p.id), '{}') AS flags
      FROM patients p WHERE p.id = $1 AND p.location_id = $2`,
     [patientId, locationId],
@@ -120,6 +127,8 @@ export async function loadPatientForBooking(
     id: p.id, name: p.name, clientId: p.client_id, status: p.status, species: p.species, sex: p.sex, neutered: p.neutered,
     dateOfBirth: p.date_of_birth, approxAgeMonths: p.approx_age_months, activePrescriptions: p.active_prescriptions,
     temperamentFlags: p.flags,
+    // The record is the history: no date means none on file (prerequisite not met).
+    lastWellnessExamAt: p.last_wellness, lastCompletedVisitAt: p.last_visit, lastSurgeryAt: p.last_surgery,
   };
 }
 
