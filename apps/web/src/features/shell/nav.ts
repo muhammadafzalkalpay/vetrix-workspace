@@ -24,6 +24,8 @@ export interface NavItem {
   permission?: Permission;
   /** Words people may type in ⌘K to find this page. */
   keywords?: string[];
+  /** Not shown in the menu or ⌘K for now (the page still works by its address). */
+  hidden?: boolean;
 }
 
 export interface NavGroup {
@@ -60,7 +62,8 @@ export const NAV: NavGroup[] = [
     items: [
       { href: "/reports", label: "Reports", icon: BarChart3, permission: "reports.view", keywords: ["numbers", "analytics"] },
       { href: "/team", label: "Team", icon: UserRoundCog, permission: "staff.manage", keywords: ["staff", "roles", "invite"] },
-      { href: "/settings", label: "Settings", icon: Settings, permission: "settings.manage", keywords: ["hours", "services", "rooms"] },
+      // Hidden until the settings screens are built.
+      { href: "/settings", label: "Settings", icon: Settings, permission: "settings.manage", keywords: ["hours", "services", "rooms"], hidden: true },
     ],
   },
 ];
@@ -69,7 +72,7 @@ export const NAV: NavGroup[] = [
 export const MOBILE_TABS = ["/overview", "/schedule", "/clients", "/messages"];
 
 export function visibleNav(permissions: ReadonlySet<Permission>): NavGroup[] {
-  return NAV.map((g) => ({ ...g, items: g.items.filter((i) => !i.permission || permissions.has(i.permission)) })).filter(
+  return NAV.map((g) => ({ ...g, items: g.items.filter((i) => !i.hidden && (!i.permission || permissions.has(i.permission))) })).filter(
     (g) => g.items.length > 0,
   );
 }

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ChevronRight, Mail, MessageSquare, Pencil, Phone, Plus, ShieldCheck, ShieldOff, Users } from "lucide-react";
+import { ChevronRight, Mail, MessageSquare, Pencil, Phone, Plus, ShieldCheck, ShieldOff, Users, MessageSquareText } from "lucide-react";
 import { ageInMonths, canContact, formatAge, formatPhone } from "@vetrix/domain";
 import { getClient } from "@vetrix/db/runtime";
 import { DetailList, Panel } from "@/components/patterns/detail-list";
@@ -59,11 +59,18 @@ export default async function ClientPage({
           </span>
         }
         actions={
-          canEdit && (
-            <Link href={`/clients/${c.id}/edit`} className={WHITE_BUTTON}>
-              <Pencil aria-hidden /> Edit
-            </Link>
-          )
+          <div className="flex gap-2">
+            {shell.permissions.has("messages.view") && (
+              <Link href={`/messages/${c.id}`} className={cn(buttonVariants({ variant: "outline", size: "sm" }), "border-white/30 bg-white/10 text-white hover:bg-white/20")}>
+                <MessageSquareText aria-hidden /> Message
+              </Link>
+            )}
+            {canEdit && (
+              <Link href={`/clients/${c.id}/edit`} className={WHITE_BUTTON}>
+                <Pencil aria-hidden /> Edit
+              </Link>
+            )}
+          </div>
         }
       />
 

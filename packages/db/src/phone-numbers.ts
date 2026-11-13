@@ -35,3 +35,12 @@ export async function assignPhoneNumber(registry: SqlClient, input: { number: st
   );
   return { e164, organizationId: input.organizationId, locationId: input.locationId };
 }
+
+/** The number a location texts from (its first assigned number), or null. */
+export async function numberForLocation(registry: SqlClient, input: { organizationId: string; locationId: string }): Promise<string | null> {
+  const { rows } = await registry.query<{ e164: string }>(
+    `SELECT e164 FROM phone_numbers WHERE organization_id = $1 AND location_id = $2 ORDER BY created_at LIMIT 1`,
+    [input.organizationId, input.locationId],
+  );
+  return rows[0]?.e164 ?? null;
+}

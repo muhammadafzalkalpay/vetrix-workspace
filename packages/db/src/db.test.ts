@@ -25,7 +25,7 @@ describe("database_ref", () => {
 describe("migration files", () => {
   it("loads the registry and clinic files in order", () => {
     expect(loadMigrations("registry").map((m) => m.version)).toEqual(["001_registry", "003_auth", "005_phone_numbers"]);
-    expect(loadMigrations("clinic").map((m) => m.version)).toEqual(["002_clinic", "004_front_desk"]);
+    expect(loadMigrations("clinic").map((m) => m.version)).toEqual(["002_clinic", "004_front_desk", "006_messages"]);
   });
 
   it("uses version numbers only once across both folders", () => {

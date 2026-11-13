@@ -13,3 +13,4 @@ export * from "./triage";
 export * from "./front-desk-language";
 export * from "./front-desk";
 export * from "./triage-ai";
+export * from "./messaging";

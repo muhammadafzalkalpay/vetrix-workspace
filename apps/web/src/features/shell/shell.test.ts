@@ -6,8 +6,9 @@ const labels = (perms: readonly Permission[]) =>
   visibleNav(new Set(perms)).flatMap((g) => g.items.map((i) => i.label));
 
 describe("navigation", () => {
-  it("shows the owner every page", () => {
-    expect(labels(ALL_PERMISSIONS)).toHaveLength(NAV.flatMap((g) => g.items).length);
+  it("shows the owner every page that is not hidden", () => {
+    expect(labels(ALL_PERMISSIONS)).toHaveLength(NAV.flatMap((g) => g.items).filter((i) => !i.hidden).length);
+    expect(labels(ALL_PERMISSIONS)).not.toContain("Settings"); // hidden for now
   });
 
   it("hides clinic admin pages from front-line roles", () => {
