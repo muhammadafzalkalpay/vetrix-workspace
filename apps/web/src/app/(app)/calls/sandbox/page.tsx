@@ -8,6 +8,7 @@ import { Alert } from "@/components/ui/alert";
 import { buttonVariants } from "@/components/ui/button";
 import { requirePage } from "@/features/clients/access";
 import { aiMode } from "@/lib/ai";
+import { endSandboxAction, sendSandboxAction, startSandboxAction } from "@/features/front-desk/actions";
 import { SandboxConsole, type QuickCaller } from "@/features/front-desk/sandbox-console";
 import { cn } from "@/lib/utils";
 
@@ -45,7 +46,7 @@ export default async function SandboxPage() {
           </Link>
         }
       />
-      <SandboxConsole aiName={aiName} callers={callers} />
+      <SandboxConsole aiName={aiName} callers={callers} actions={{ start: startSandboxAction, send: sendSandboxAction, end: endSandboxAction }} />
     </>
   );
 }

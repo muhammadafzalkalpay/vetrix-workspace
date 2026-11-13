@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
-import { endSandboxAction, sendSandboxAction, startSandboxAction } from "./actions";
+import type { ConsoleResult } from "./actions";
 import { SandboxBadge, TriageBadge } from "./labels";
 
 export interface QuickCaller {
@@ -35,7 +35,25 @@ const SUGGESTIONS = [
 
 let nextId = 1;
 
-export function SandboxConsole({ aiName, callers }: { aiName: string; callers: QuickCaller[] }) {
+/** Server actions the console calls: staff ones, or the rate-limited public ones. */
+export interface ConsoleActions {
+  start: (input: { channel: "voice" | "sms"; callerNumber: string }) => Promise<ConsoleResult>;
+  send: (callId: string, text: string) => Promise<ConsoleResult>;
+  end: (callId: string) => Promise<void>;
+}
+
+export function SandboxConsole({
+  aiName,
+  callers,
+  actions,
+  showCallsLink = true,
+}: {
+  aiName: string;
+  callers: QuickCaller[];
+  actions: ConsoleActions;
+  /** Staff can open the finished conversation under Calls; the public page cannot. */
+  showCallsLink?: boolean;
+}) {
   const [channel, setChannel] = useState<"sms" | "voice">("sms");
   const [number, setNumber] = useState(callers[0]?.display ?? "");
   const [callId, setCallId] = useState<string | null>(null);
@@ -58,7 +76,7 @@ export function SandboxConsole({ aiName, callers }: { aiName: string; callers: Q
   function start() {
     setError(null);
     startTransition(async () => {
-      const r = await startSandboxAction({ channel, callerNumber: number });
+      const r = await actions.start({ channel, callerNumber: number });
       if (!r.ok) return setError(r.error);
       setCallId(r.callId);
       setLines([]);
@@ -76,7 +94,7 @@ export function SandboxConsole({ aiName, callers }: { aiName: string; callers: Q
     setText("");
     add("caller", [body]);
     startTransition(async () => {
-      const r = await sendSandboxAction(callId, body);
+      const r = await actions.send(callId, body);
       if (!r.ok) return setError(r.error);
       add("ai", r.replies);
       add("system", r.notes);
@@ -88,7 +106,7 @@ export function SandboxConsole({ aiName, callers }: { aiName: string; callers: Q
   function hangUp() {
     if (!callId) return;
     startTransition(async () => {
-      await endSandboxAction(callId);
+      await actions.end(callId);
       add("system", [channel === "voice" ? "Caller hung up." : "Conversation closed."]);
       setEnded(true);
     });
@@ -246,9 +264,11 @@ export function SandboxConsole({ aiName, callers }: { aiName: string; callers: Q
         <footer className="flex flex-wrap items-center justify-between gap-3 border-t px-4 py-3">
           <p className="text-small text-muted-foreground">This conversation has ended.</p>
           <div className="flex gap-2">
-            <Link href={`/calls/${callId}`} className="inline-flex items-center gap-1 text-small font-semibold text-primary hover:underline">
-              Open in Calls <ArrowUpRight className="size-4" aria-hidden />
-            </Link>
+            {showCallsLink && (
+              <Link href={`/calls/${callId}`} className="inline-flex items-center gap-1 text-small font-semibold text-primary hover:underline">
+                Open in Calls <ArrowUpRight className="size-4" aria-hidden />
+              </Link>
+            )}
             <Button variant="outline" size="sm" onClick={reset}>
               <RotateCcw aria-hidden /> New conversation
             </Button>

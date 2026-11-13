@@ -1,14 +1,32 @@
 import type { CSSProperties } from "react";
 import { ShieldCheck } from "lucide-react";
 import { BrandBackdrop, Highlight, LogoOnDark } from "@/components/vetrix/brand-backdrop";
+import { formatPhone, normalizePhone } from "@vetrix/domain";
 import { BookingScene } from "@/features/auth/booking-scene";
+import { publicTrialSetup } from "@/features/public-try/actions";
+import { TryRiley } from "@/features/public-try/try-riley";
+import { getEnv } from "@/lib/env";
 
 export const dynamic = "force-dynamic";
 
 const delay = (seconds: number): CSSProperties => ({ animationDelay: `${seconds}s` });
 
+/** The clinic's number for the "Call Riley" button (PUBLIC_CALL_NUMBER), if set. */
+function callNumber(): { tel: string; display: string } | null {
+  const raw = getEnv().PUBLIC_CALL_NUMBER;
+  if (!raw) return null;
+  try {
+    const e164 = normalizePhone(raw);
+    return { tel: e164, display: formatPhone(e164) };
+  } catch {
+    return null;
+  }
+}
+
 /** Form on the right; from large screens up, a booking scene on the left. */
-export default function AuthLayout({ children }: { children: React.ReactNode }) {
+export default async function AuthLayout({ children }: { children: React.ReactNode }) {
+  const trial = await publicTrialSetup();
+  const tryRiley = <TryRiley aiName={trial.aiName} callers={trial.callers} chatEnabled={trial.enabled} phone={callNumber()} />;
   return (
     <div className="grid min-h-dvh bg-card lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
       <aside className="relative hidden overflow-hidden text-white lg:flex lg:flex-col lg:gap-8 lg:px-12 lg:py-10 xl:px-16">
@@ -25,6 +43,9 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           <p className="vx-fade-up max-w-md text-h3 font-normal text-white/75" style={delay(0.25)}>
             Owners book online or by phone. Vetrix fills the right slot with the right doctor and room.
           </p>
+          <div className="vx-fade-up" style={delay(0.4)}>
+            {tryRiley}
+          </div>
         </div>
 
         <div className="relative mt-auto flex justify-center">
@@ -39,6 +60,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           <div className="relative grid gap-4">
             <LogoOnDark />
             <p className="vx-fade-up text-h2 font-semibold">Every call answered. Every pet brought back.</p>
+            {tryRiley}
           </div>
         </div>
 
