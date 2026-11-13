@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/patterns/page-header";
 import { Alert } from "@/components/ui/alert";
 import { buttonVariants } from "@/components/ui/button";
 import { requirePage } from "@/features/clients/access";
+import { aiMode } from "@/lib/ai";
 import { SandboxConsole, type QuickCaller } from "@/features/front-desk/sandbox-console";
 import { cn } from "@/lib/utils";
 
@@ -37,7 +38,7 @@ export default async function SandboxPage() {
     <>
       <PageHeader
         title={`Talk to ${aiName}`}
-        description="Try the AI front desk as a client would. Bookings and tasks are real records here; nothing reaches a phone."
+        description={`Try the AI front desk as a client would. Bookings and tasks are real records here; nothing reaches a phone. Answering with ${aiMode() === "openai" ? "OpenAI" : "the sandbox AI (scripted)"}.`}
         actions={
           <Link href="/calls" className={cn(buttonVariants({ variant: "outline" }), "border-white/30 bg-white/10 text-white hover:bg-white/20")}>
             <ChevronLeft aria-hidden /> Calls

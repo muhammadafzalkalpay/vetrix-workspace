@@ -267,6 +267,12 @@ class Turn {
       newMatches = [];
     }
     if (action.kind !== "er_referral") return;
+    await this.erReferral(action, newMatches);
+  }
+
+  /** ER details by voice and text, a staff alert, and (after hours) the next opening. */
+  async erReferral(action: Extract<TriageAction, { kind: "er_referral" }>, newMatches: TriageMatch[]) {
+    const lead = leadingMatch(this.s.triage);
     this.say(action.say);
     for (const m of newMatches) await this.port.logTriage({ match: m, actionTaken: "er_referral" });
     if (this.s.transferOutcome !== "failed") this.s.transferOutcome = "er_referred";
@@ -618,6 +624,21 @@ export async function respond(state: ConversationState, text: string, ctx: Front
     for (const m of applied.newMatches) await port.logTriage({ match: m, actionTaken: "noted" });
   }
   await turn.handle(text, s.phase === "open" || s.phase === "anything_else" ? intentOverride : null);
+  return { state: s, replies: turn.replies };
+}
+
+/**
+ * The warm transfer did not connect (no answer, busy, failed). Pack W6: read
+ * the ER details, text them and raise an urgent staff alert.
+ */
+export async function respondTransferFailed(state: ConversationState, ctx: FrontDeskContext, port: FrontDeskPort): Promise<TurnResult> {
+  const s: ConversationState = structuredClone(state);
+  const turn = new Turn(s, ctx, port);
+  s.transferOutcome = "failed";
+  s.phase = "open";
+  const action = decideTriageAction(ctx.rules, "emergency", { ...ctx.situation, transferFailed: true });
+  if (action.kind === "er_referral") await turn.erReferral(action, []);
+  s.phase = "ended";
   return { state: s, replies: turn.replies };
 }
 

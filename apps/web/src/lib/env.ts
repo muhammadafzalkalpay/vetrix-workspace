@@ -38,17 +38,15 @@ export const envSchema = z
     TWILIO_ACCOUNT_SID: optional,
     TWILIO_AUTH_TOKEN: optional,
     SENDGRID_API_KEY: optional,
-    // Azure OpenAI. Each model is a "deployment" you create in Azure AI Foundry;
-    // the code refers to the deployment name, not the model name.
-    AZURE_OPENAI_ENDPOINT: z
-      .string()
-      .url()
-      .refine((v) => v.startsWith("https://"), "Must be the https:// endpoint from the Azure portal")
-      .optional()
-      .or(z.literal("").transform(() => undefined)),
-    AZURE_OPENAI_API_KEY: optional,
-    AZURE_OPENAI_REALTIME_DEPLOYMENT: optional,
-    AZURE_OPENAI_TEXT_DEPLOYMENT: optional,
+    // OpenAI (the AI front desk). Without a key, texts and calls are answered
+    // by the scripted sandbox AI, even in live mode (so Twilio can be tested
+    // before OpenAI is set up). Model names are set here, not in code, so a
+    // newer model needs no release.
+    OPENAI_API_KEY: optional,
+    /** Text model for triage and replies, e.g. a current "mini" model. */
+    OPENAI_TEXT_MODEL: optional,
+    /** Realtime speech model for live calls (voice service). */
+    OPENAI_REALTIME_MODEL: optional,
     SENTRY_DSN: optional,
   })
   .superRefine((env, ctx) => {
@@ -69,14 +67,9 @@ export const envSchema = z
         }
       }
     }
-    // The Azure endpoint and key only work as a pair.
-    if (Boolean(env.AZURE_OPENAI_ENDPOINT) !== Boolean(env.AZURE_OPENAI_API_KEY)) {
-      const missing = env.AZURE_OPENAI_ENDPOINT ? "AZURE_OPENAI_API_KEY" : "AZURE_OPENAI_ENDPOINT";
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: [missing],
-        message: "Set AZURE_OPENAI_ENDPOINT and AZURE_OPENAI_API_KEY together",
-      });
+    // A key without a model would fail on the first call.
+    if (env.OPENAI_API_KEY && !env.OPENAI_TEXT_MODEL) {
+      ctx.addIssue({ code: "custom", path: ["OPENAI_TEXT_MODEL"], message: "Set the text model to use with OPENAI_API_KEY" });
     }
     if (env.MESSAGING_MODE !== "live") return;
     // Live mode must be able to send and answer calls, otherwise they would fail silently.
@@ -85,9 +78,6 @@ export const envSchema = z
       "TWILIO_AUTH_TOKEN",
       "SENDGRID_API_KEY",
       "EMAIL_FROM",
-      "AZURE_OPENAI_ENDPOINT",
-      "AZURE_OPENAI_API_KEY",
-      "AZURE_OPENAI_REALTIME_DEPLOYMENT",
     ] as const) {
       if (!env[key]) {
         ctx.addIssue({

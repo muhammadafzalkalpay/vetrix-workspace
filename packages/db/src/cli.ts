@@ -6,6 +6,7 @@
 //   pnpm db:packs:publish                 publish the bundled veterinary pack to the registry
 //   pnpm db:seed:sample --org <slug> [--replace]   sample clinic data (non-production only)
 //   pnpm db:staff:add --org <slug> --email a@b.com --name "Jo Smith" --role owner [--location <id>]
+//   pnpm db:phone:add --org <slug> --number +15555550100 [--location <id>]   route a Twilio number to a location
 // Output never includes passwords: only host and database names.
 import { parseArgs } from "node:util";
 import { Pool } from "@neondatabase/serverless";
@@ -17,9 +18,10 @@ import { seedSampleClinic } from "./seed/sample-clinic";
 import { syncRoleCatalogue, upsertStaffMember } from "./access";
 import { addOrganizationMember, ensurePlatformUser } from "./members";
 import { isRoleKey, ROLE_KEYS } from "@vetrix/domain";
+import { assignPhoneNumber } from "./phone-numbers";
 import { listTenantDatabases, recordTenantMigrations, registerTenant, setTenantStatus, type TenantDatabase } from "./tenants";
 
-const EXPECTED_TABLES: Record<MigrationTarget, number> = { registry: 12, clinic: 58 };
+const EXPECTED_TABLES: Record<MigrationTarget, number> = { registry: 13, clinic: 58 };
 
 function registryUrl(): string {
   const url = process.env.REGISTRY_DATABASE_URL;
@@ -264,6 +266,27 @@ async function staffAdd(argv: string[]): Promise<void> {
   });
 }
 
+async function phoneAdd(args: string[]) {
+  const { values } = parseArgs({ args, options: { org: { type: "string" }, number: { type: "string" }, location: { type: "string" } } });
+  const { org, number } = values;
+  if (!org || !number) throw new Error("Usage: pnpm db:phone:add --org <slug> --number +15555550100 [--location <id>]");
+  await withClient(registryUrl(), async (registry) => {
+    const tenant = (await listTenantDatabases(registry)).find((t) => t.organization_slug === org);
+    if (!tenant) throw new Error(`Organization "${org}" is not registered`);
+    const locationId = await withClient(resolveDatabaseRef(tenant.database_ref), async (clinic) => {
+      const { rows } = await clinic.query<{ id: string; name: string }>(
+        values.location ? `SELECT id, name FROM locations WHERE id = $1` : `SELECT id, name FROM locations ORDER BY name`,
+        values.location ? [values.location] : [],
+      );
+      if (rows.length === 0) throw new Error("Location not found");
+      if (rows.length > 1) throw new Error(`This organization has ${rows.length} locations; pass --location <id>`);
+      return rows[0]!.id;
+    });
+    const route = await assignPhoneNumber(registry, { number, organizationId: tenant.organization_id, locationId });
+    console.log(`✓ ${route.e164} now answers for ${org} (location ${route.locationId})`);
+  });
+}
+
 const [command, ...args] = process.argv.slice(2);
 // pnpm forwards the "--" separator; drop it so flags parse normally.
 const rest = args.filter((arg) => arg !== "--");
@@ -274,11 +297,12 @@ const commands: Record<string, () => Promise<void>> = {
   "packs:publish": packsPublish,
   "seed:sample": () => seedSample(rest),
   "staff:add": () => staffAdd(rest),
+  "phone:add": () => phoneAdd(rest),
 };
 
 const run = command ? commands[command] : undefined;
 if (!run) {
-  console.error(`Unknown command "${command ?? ""}". Use: migrate, tenant:add, status, packs:publish, seed:sample, staff:add`);
+  console.error(`Unknown command "${command ?? ""}". Use: migrate, tenant:add, status, packs:publish, seed:sample, staff:add, phone:add`);
   process.exit(1);
 }
 run().catch((error: unknown) => {

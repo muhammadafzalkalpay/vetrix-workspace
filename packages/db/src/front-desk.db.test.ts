@@ -3,7 +3,7 @@
 import { describe, expect, it } from "vitest";
 import { Pool } from "@neondatabase/serverless";
 import { dateRange, localParts, zonedInstant } from "@vetrix/domain";
-import { continueFrontDesk, getCall, listCalls, startFrontDesk } from "./front-desk";
+import { applyTextKeyword, continueFrontDesk, findOpenTextThread, getCall, listCalls, startFrontDesk, transferFailedFrontDesk } from "./front-desk";
 import type { TransactionPool } from "./clients";
 import type { SqlClient } from "./sql-client";
 
@@ -124,5 +124,36 @@ describe.skipIf(!url)("AI front desk on the clinic database", () => {
       const call = await getCall(db, loc.id, s.callId);
       expect(call.transfer_outcome).toBe("transferred");
       expect(call.ended_at).not.toBeNull();
+    }), 180_000);
+
+  it("live calls: hands back the transfer number, then the ER fallback when it does not connect", () =>
+    withRollback(async (pool, db, loc) => {
+      const now = next(loc, 4, "11:00");
+      const s = await startFrontDesk(pool, { locationId: loc.id, channel: "voice", callerNumber: "+15555550112", sandbox: false, providerCallId: "CAlive1" }, now);
+      const r = await continueFrontDesk(pool, { locationId: loc.id, callId: s.callId, text: "she collapsed and won't wake up" }, now);
+      const transfer = (await db.query<{ n: string }>(`SELECT emergency_transfer_number AS n FROM location_phone_settings WHERE location_id = $1`, [loc.id])).rows[0]!.n;
+      expect(r.transferTo).toBe(transfer);
+      expect(r.ended).toBe(false);
+      const failed = await transferFailedFrontDesk(pool, { locationId: loc.id, callId: s.callId }, now);
+      expect(failed.replies.join(" ")).toMatch(/couldn't reach the team/);
+      expect(failed.outbound[0]).toMatchObject({ to: "+15555550112", messageId: null });
+      const call = await getCall(db, loc.id, s.callId);
+      expect(call).toMatchObject({ transfer_outcome: "failed" });
+      expect(call.ended_at).not.toBeNull();
+      expect(call.tasks.some((t) => t.type === "emergency_alert")).toBe(true);
+    }), 180_000);
+
+  it("continues a client's open text thread, and STOP turns texting off", () =>
+    withRollback(async (pool, db, loc) => {
+      const owner = await oneDogOwner(db, loc.id);
+      expect(await findOpenTextThread(db, loc.id, owner.mobile)).toBeNull();
+      const s = await startFrontDesk(pool, { locationId: loc.id, channel: "sms", callerNumber: owner.mobile, sandbox: true });
+      expect(await findOpenTextThread(db, loc.id, owner.mobile)).toBe(s.callId);
+      expect(await findOpenTextThread(db, loc.id, owner.mobile, 0)).toBeNull();
+      expect(await applyTextKeyword(db, { locationId: loc.id, mobile: owner.mobile, body: " Stop " })).toBe("stop");
+      const c = await db.query<{ sms_consent: boolean }>(`SELECT sms_consent FROM clients WHERE location_id = $1 AND mobile = $2`, [loc.id, owner.mobile]);
+      expect(c.rows[0]!.sms_consent).toBe(false);
+      expect(await applyTextKeyword(db, { locationId: loc.id, mobile: owner.mobile, body: "START" })).toBe("start");
+      expect(await applyTextKeyword(db, { locationId: loc.id, mobile: owner.mobile, body: "cancel my appointment" })).toBeNull();
     }), 180_000);
 });

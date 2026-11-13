@@ -16,6 +16,7 @@ import {
   NotFoundError,
   offerTwo,
   respond,
+  respondTransferFailed,
   startConversation,
   summarizeConversation,
   validateClient,
@@ -28,6 +29,7 @@ import {
   type PetRef,
   type ServiceInfo,
   type Species,
+  type TriageAssessment,
   type TriageLevel,
 } from "@vetrix/domain";
 import { getVeterinaryPack } from "@vetrix/pack";
@@ -142,21 +144,47 @@ async function petsOf(db: SqlClient, locationId: string, clientId: string, today
 
 // ---------- The port ----------
 
+/** How the caller's words are classified: the sandbox phrase rules, or a model merged with them. */
+export type TriageClassifier = (text: string, petNames: string[]) => Promise<TriageAssessment>;
+
+export interface FrontDeskOptions {
+  classify?: TriageClassifier;
+}
+
+/** The sandbox AI's classifier: pack phrases and broad cues. */
+export const sandboxClassifier: TriageClassifier = async (text, petNames) =>
+  classifyByPhrases(getVeterinaryPack().triage as unknown as FrontDeskContext["rules"], text, { petNames });
+
+/** A text the caller should receive now (live mode); sandbox texts are only recorded. */
+export interface OutboundText {
+  messageId: string | null;
+  to: string;
+  body: string;
+}
+
 interface PortNotes {
   /** Things that happened, shown in the transcript between turns. */
   notes: string[];
+  outbound: OutboundText[];
+  /** Live calls: the number to warm-transfer to after the reply. */
+  transferTo: string | null;
 }
 
-function createPort(db: SqlClient, input: { locationId: string; callId: string; setup: Setup; sandbox: boolean }, out: PortNotes): FrontDeskPort {
+const newNotes = (): PortNotes => ({ notes: [], outbound: [], transferTo: null });
+
+function createPort(
+  db: SqlClient,
+  input: { locationId: string; callId: string; setup: Setup; sandbox: boolean; channel: "voice" | "sms"; classify?: TriageClassifier },
+  out: PortNotes,
+): FrontDeskPort {
   const { locationId, callId, setup, sandbox } = input;
   const label = sandbox ? "Sandbox: " : "";
-  const pack = getVeterinaryPack();
 
   const serviceRow = (packServiceId: string) => setup.serviceIds.get(packServiceId) ?? null;
 
   return {
     async classify(text, petNames) {
-      return classifyByPhrases(pack.triage as unknown as FrontDeskContext["rules"], text, { petNames });
+      return (input.classify ?? sandboxClassifier)(text, petNames);
     },
 
     async findSlots(req) {
@@ -230,24 +258,31 @@ function createPort(db: SqlClient, input: { locationId: string; callId: string; 
     },
 
     async sendText(t) {
-      // Sandbox texts are saved and labelled, never sent. Live texts queue for the dispatcher.
+      // Sandbox texts are saved and labelled, never sent. Live texts are
+      // queued here and sent by the caller of this turn after it is saved.
+      let messageId: string | null = null;
       if (t.clientId) {
-        await db.query(
+        const { rows } = await db.query<{ id: string }>(
           `INSERT INTO messages (location_id, client_id, channel, template_key, body, status, sent_at)
-           VALUES ($1, $2, 'sms', $3, $4, $5, $6)`,
+           VALUES ($1, $2, 'sms', $3, $4, $5, $6) RETURNING id`,
           [locationId, t.clientId, t.templateKey, t.body, sandbox ? "simulated" : "queued", sandbox ? new Date() : null],
         );
+        messageId = rows[0]!.id;
       }
+      if (!sandbox) out.outbound.push({ messageId, to: t.to, body: t.body });
       out.notes.push(`${label}Text to ${t.to}: ${t.body}`);
     },
 
     async transfer(t) {
-      if (!sandbox) {
-        // Live transfers run in the voice service; the web app cannot bridge a call.
-        out.notes.push(`Transfer to ${t.to} not available here.`);
-        return { ok: false };
+      if (sandbox) {
+        out.notes.push(`${label}Warm transfer to ${t.to}. Summary for staff: ${t.summary}`);
+        return { ok: true };
       }
-      out.notes.push(`${label}Warm transfer to ${t.to}. Summary for staff: ${t.summary}`);
+      if (input.channel !== "voice") return { ok: false };
+      // Live call: the reply is spoken, then the call is dialled through.
+      // If it does not connect, transferFailedFrontDesk() takes over.
+      out.transferTo = t.to;
+      out.notes.push(`Warm transfer to ${t.to}. Summary for staff: ${t.summary}`);
       return { ok: true };
     },
 
@@ -267,6 +302,8 @@ export interface StartInput {
   channel: "voice" | "sms";
   callerNumber: string | null;
   sandbox: boolean;
+  /** Twilio's CallSid for phone calls, so later webhooks find the conversation. */
+  providerCallId?: string | null;
 }
 
 export interface TurnOutput {
@@ -275,6 +312,10 @@ export interface TurnOutput {
   notes: string[];
   ended: boolean;
   triageLevel: TriageLevel;
+  /** Texts to send now (live mode only). */
+  outbound: OutboundText[];
+  /** Live calls: dial this number after speaking the replies. */
+  transferTo: string | null;
 }
 
 async function addTurns(db: SqlClient, callId: string, turns: { speaker: "caller" | "ai" | "system"; body: string }[]) {
@@ -297,13 +338,13 @@ export async function startFrontDesk(pool: TransactionPool, input: StartInput, n
     const ctx: FrontDeskContext = { ...setup.ctx, callerNumber: mobile, channel: input.channel };
     const { state, replies } = startConversation(ctx, caller);
     const { rows } = await db.query<{ id: string }>(
-      `INSERT INTO calls (location_id, client_id, direction, caller_number, after_hours, started_at, channel, sandbox, state, summary)
-       VALUES ($1, $2, 'inbound', $3, $4, $5, $6, $7, $8, 'No action yet') RETURNING id`,
-      [input.locationId, caller?.clientId ?? null, mobile, !setup.ctx.situation.open, new Date(now), input.channel, input.sandbox, JSON.stringify(state)],
+      `INSERT INTO calls (location_id, client_id, direction, caller_number, after_hours, started_at, channel, sandbox, state, summary, provider_call_id)
+       VALUES ($1, $2, 'inbound', $3, $4, $5, $6, $7, $8, 'No action yet', $9) RETURNING id`,
+      [input.locationId, caller?.clientId ?? null, mobile, !setup.ctx.situation.open, new Date(now), input.channel, input.sandbox, JSON.stringify(state), input.providerCallId ?? null],
     );
     const callId = rows[0]!.id;
     await addTurns(db, callId, replies.map((body) => ({ speaker: "ai" as const, body })));
-    return { callId, replies, notes: [], ended: false, triageLevel: "routine" };
+    return { callId, replies, notes: [], ended: false, triageLevel: "routine", outbound: [], transferTo: null };
   });
 }
 
@@ -312,25 +353,49 @@ export async function continueFrontDesk(
   pool: TransactionPool,
   input: { locationId: string; callId: string; text: string },
   now = Date.now(),
+  options: FrontDeskOptions = {},
 ): Promise<TurnOutput> {
   const text = input.text.trim();
   if (!text) throw new ValidationError("Type a message.", { field: "text" });
   if (text.length > MAX_TEXT) throw new ValidationError(`Keep messages under ${MAX_TEXT} characters.`, { field: "text" });
+  return runTurn(pool, input, now, options, text, (state, ctx, port) => respond(state, text, ctx, port));
+}
+
+/** A live warm transfer did not connect: ER details, text and an urgent staff alert (pack W6). */
+export async function transferFailedFrontDesk(
+  pool: TransactionPool,
+  input: { locationId: string; callId: string },
+  now = Date.now(),
+  options: FrontDeskOptions = {},
+): Promise<TurnOutput> {
+  return runTurn(pool, input, now, options, null, (state, ctx, port) => respondTransferFailed(state, ctx, port), "Transfer did not connect.");
+}
+
+async function runTurn(
+  pool: TransactionPool,
+  input: { locationId: string; callId: string },
+  now: number,
+  options: FrontDeskOptions,
+  callerText: string | null,
+  step: (state: ConversationState, ctx: FrontDeskContext, port: FrontDeskPort) => ReturnType<typeof respond>,
+  systemNote?: string,
+): Promise<TurnOutput> {
   return withTransaction(pool, async (db) => {
-    const { rows } = await db.query<{ state: ConversationState; channel: "voice" | "sms"; caller_number: string | null; sandbox: boolean; ended_at: Date | null; started_at: Date }>(
-      `SELECT state, channel, caller_number, sandbox, ended_at, started_at FROM calls WHERE id = $1 AND location_id = $2 FOR UPDATE`,
+    const { rows } = await db.query<{ state: ConversationState; channel: "voice" | "sms"; caller_number: string | null; sandbox: boolean }>(
+      `SELECT state, channel, caller_number, sandbox FROM calls WHERE id = $1 AND location_id = $2 FOR UPDATE`,
       [input.callId, input.locationId],
     );
     const call = rows[0];
     if (!call) throw new NotFoundError("Conversation", input.callId);
     const setup = await loadSetup(db, input.locationId, now);
     const ctx: FrontDeskContext = { ...setup.ctx, callerNumber: call.caller_number, channel: call.channel };
-    const out: PortNotes = { notes: [] };
-    const port = createPort(db, { locationId: input.locationId, callId: input.callId, setup, sandbox: call.sandbox }, out);
-    const { state, replies } = await respond(call.state, text, ctx, port);
-    const ended = state.phase === "ended";
+    const out = newNotes();
+    const port = createPort(db, { locationId: input.locationId, callId: input.callId, setup, sandbox: call.sandbox, channel: call.channel, classify: options.classify }, out);
+    const { state, replies } = await step(call.state, ctx, port);
+    const ended = state.phase === "ended" && !out.transferTo;
     await addTurns(db, input.callId, [
-      { speaker: "caller", body: text },
+      ...(systemNote ? [{ speaker: "system" as const, body: systemNote }] : []),
+      ...(callerText ? [{ speaker: "caller" as const, body: callerText }] : []),
       ...replies.map((body) => ({ speaker: "ai" as const, body })),
       ...out.notes.map((body) => ({ speaker: "system" as const, body })),
     ]);
@@ -343,8 +408,35 @@ export async function continueFrontDesk(
       [input.callId, input.locationId, JSON.stringify(state), state.triage.level, state.caller.clientId, state.petId,
        state.transferOutcome, state.outcomes.join(",") || null, summarizeConversation(state), ended, new Date(now)],
     );
-    return { callId: input.callId, replies, notes: out.notes, ended, triageLevel: state.triage.level };
+    return { callId: input.callId, replies, notes: out.notes, ended, triageLevel: state.triage.level, outbound: out.outbound, transferTo: out.transferTo };
   });
+}
+
+/** The client's text thread at this location that is still open and active recently. */
+export async function findOpenTextThread(db: SqlClient, locationId: string, mobile: string, idleMinutes = 240): Promise<string | null> {
+  const { rows } = await db.query<{ id: string }>(
+    `SELECT k.id FROM calls k
+     WHERE k.location_id = $1 AND k.caller_number = $2 AND k.channel = 'sms' AND k.ended_at IS NULL
+       AND coalesce((SELECT max(t.created_at) FROM call_turns t WHERE t.call_id = k.id), k.started_at) > now() - make_interval(mins => $3)
+     ORDER BY k.started_at DESC LIMIT 1`,
+    [locationId, mobile, idleMinutes],
+  );
+  return rows[0]?.id ?? null;
+}
+
+/** The conversation for a Twilio CallSid, if any. */
+export async function findCallByProviderId(db: SqlClient, locationId: string, providerCallId: string): Promise<string | null> {
+  const { rows } = await db.query<{ id: string }>(`SELECT id FROM calls WHERE location_id = $1 AND provider_call_id = $2`, [locationId, providerCallId]);
+  return rows[0]?.id ?? null;
+}
+
+/** Records the outcome of sending a live text. */
+export async function markMessageSent(db: SqlClient, input: { locationId: string; messageId: string; providerMessageId: string | null; ok: boolean }): Promise<void> {
+  await db.query(
+    `UPDATE messages SET status = $3, provider_message_id = $4, sent_at = CASE WHEN $3 = 'sent' THEN now() ELSE sent_at END
+     WHERE id = $1 AND location_id = $2`,
+    [input.messageId, input.locationId, input.ok ? "sent" : "failed", input.providerMessageId],
+  );
 }
 
 /** Closes a conversation the caller has left (hang up, or the thread went quiet). */
@@ -442,4 +534,21 @@ export async function getCall(db: SqlClient, locationId: string, callId: string)
 export async function aiPersonaName(db: SqlClient, locationId: string): Promise<string> {
   const { rows } = await db.query<{ name: string | null }>(`SELECT ai_persona_name AS name FROM location_phone_settings WHERE location_id = $1`, [locationId]);
   return rows[0]?.name ?? getVeterinaryPack().brand.ai_persona.default_name;
+}
+
+/**
+ * STOP and START keywords (carrier rules). STOP blocks all texts to this
+ * mobile at the location; START turns texting back on. Returns true when the
+ * message was one of these keywords and needs no conversation.
+ */
+export async function applyTextKeyword(db: SqlClient, input: { locationId: string; mobile: string; body: string }): Promise<"stop" | "start" | null> {
+  const word = input.body.trim().toLowerCase().replace(/[^a-z]/g, "");
+  const stop = ["stop", "stopall", "unsubscribe", "cancel", "end", "quit", "optout"].includes(word);
+  const start = ["start", "unstop", "optin"].includes(word);
+  if (!stop && !start) return null;
+  await db.query(
+    `UPDATE clients SET sms_consent = $3, sms_consent_at = now(), sms_consent_source = $4 WHERE location_id = $1 AND mobile = $2`,
+    [input.locationId, input.mobile, start, stop ? "sms_stop" : "sms_start"],
+  );
+  return stop ? "stop" : "start";
 }

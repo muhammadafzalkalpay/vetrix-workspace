@@ -12,3 +12,4 @@ export * from "./importer";
 export * from "./booking";
 export * from "./front-desk";
 export * from "./tasks";
+export * from "./phone-numbers";

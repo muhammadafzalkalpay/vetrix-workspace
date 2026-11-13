@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { ConflictError } from "./errors";
 import {
   respond,
+  respondTransferFailed,
   startConversation,
   summarizeConversation,
   type CallerRecord,
@@ -276,6 +277,16 @@ describe("triage during the conversation (W6)", () => {
     expect(replies[0]!.join(" ")).toMatch(/couldn't reach the team/);
     expect(log.tasks[0]!.title).toMatch(/transfer failed/);
     expect(state.transferOutcome).toBe("failed");
+  });
+
+  it("gives ER details and alerts staff when a live transfer does not connect", async () => {
+    const { port, log } = fakePort();
+    const { state } = await talk(ctx(), port, sam, ["Max ate rat poison"]);
+    const r = await respondTransferFailed(state, ctx(), port);
+    expect(r.replies.join(" ")).toMatch(/couldn't reach the team/);
+    expect(r.state).toMatchObject({ phase: "ended", transferOutcome: "failed" });
+    expect(log.tasks.at(-1)).toMatchObject({ type: "emergency_alert", priority: "urgent" });
+    expect(log.texts).toHaveLength(1);
   });
 
   it("does not downgrade when the caller says it is not that bad", async () => {
